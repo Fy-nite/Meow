@@ -1,0 +1,23 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\Meow.Core\Meow.Core.csproj" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net9.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AssemblyName>meow</AssemblyName>
+    <PackAsTool>true</PackAsTool>
+    <ToolCommandName>meow</ToolCommandName>
+    <Version>0.1.0</Version>
+    <Description>Build orchestration tool for MASM projects</Description>
+    <Authors>Fy-nite</Authors>
+    <PackageProjectUrl>https://github.com/Fy-nite/Meow</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/Fy-nite/Meow</RepositoryUrl>
+    <PackageLicenseExpression>AGPL-3.0-or-later</PackageLicenseExpression>
+  </PropertyGroup>
+
+</Project>
