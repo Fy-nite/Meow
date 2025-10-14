@@ -150,6 +150,46 @@ public class BuildConfig
     public string Output { get; set; }       // Output directory
     public string Target { get; set; }       // Target platform
     public bool Incremental { get; set; }    // Enable incremental builds
+    public bool Wildcard { get; set; }       // Enable wildcard source selection
+    public bool Link { get; set; }           // Enable linking of object files
+    public string Objdir { get; set; }       // Object file directory
+}
+```
+
+### IBuildService / BuildService
+
+Handles building MASM projects.
+
+```csharp
+using Meow.Core.Services;
+
+var configService = new ConfigService();
+var buildService = new BuildService(configService);
+```
+
+#### Methods
+
+**BuildProjectAsync**
+```csharp
+Task<bool> BuildProjectAsync(string projectPath, bool clean = false)
+```
+Builds the MASM project at the specified path.
+
+#### Example
+
+```csharp
+var configService = new ConfigService();
+var buildService = new BuildService(configService);
+
+// Build a project
+var success = await buildService.BuildProjectAsync(
+    projectPath: "/path/to/project",
+    clean: false
+);
+
+if (success)
+{
+    Console.WriteLine("Build succeeded!");
 }
 ```
 

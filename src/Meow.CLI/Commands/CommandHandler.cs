@@ -24,7 +24,7 @@ public class CommandHandler
             "--version" or "-v" => ShowVersion(),
             "--help" or "-h" or "help" => ShowHelp(),
             "init" => await HandleInitAsync(args[1..]),
-            "build" => HandleBuild(),
+            "build" => await HandleBuildAsync(args[1..]),
             "run" => HandleRun(),
             "test" => HandleTest(),
             "install" => HandleInstall(),
@@ -143,13 +143,73 @@ For more information, visit: https://github.com/Fy-nite/Meow
         }
     }
 
-    private int HandleBuild()
+    private async Task<int> HandleBuildAsync(string[] args)
     {
-        Console.ForegroundColor = ConsoleColor.Yellow;
-        Console.WriteLine("Build command is not yet implemented (Phase 2)");
-        Console.ResetColor();
-        Console.WriteLine("This will orchestrate MASM builds via the Rust MASM interpreter");
-        return 1;
+        var configService = new ConfigService();
+        var buildService = new BuildService(configService);
+
+        // Parse arguments
+        bool clean = false;
+        string? mode = null;
+
+        for (int i = 0; i < args.Length; i++)
+        {
+            switch (args[i].ToLowerInvariant())
+            {
+                case "--clean":
+                    clean = true;
+                    break;
+                case "--mode":
+                    if (i + 1 < args.Length)
+                    {
+                        mode = args[i + 1];
+                        i++;
+                    }
+                    break;
+            }
+        }
+
+        var projectPath = Directory.GetCurrentDirectory();
+        var configPath = Path.Combine(projectPath, "meow.yaml");
+
+        if (!configService.ConfigExists(configPath))
+        {
+            Console.ForegroundColor = ConsoleColor.Red;
+            Console.WriteLine("Error: No meow.yaml found in current directory.");
+            Console.ResetColor();
+            Console.WriteLine("Run 'meow init' to create a new project.");
+            return 2;
+        }
+
+        // Override mode if specified
+        if (!string.IsNullOrEmpty(mode))
+        {
+            var config = await configService.LoadConfigAsync(configPath);
+            config.Build.Mode = mode;
+            await configService.SaveConfigAsync(config, configPath);
+        }
+
+        Console.WriteLine("Building MASM project...");
+        Console.WriteLine();
+
+        var success = await buildService.BuildProjectAsync(projectPath, clean);
+
+        if (success)
+        {
+            Console.WriteLine();
+            Console.ForegroundColor = ConsoleColor.Green;
+            Console.WriteLine("✓ Build completed successfully!");
+            Console.ResetColor();
+            return 0;
+        }
+        else
+        {
+            Console.WriteLine();
+            Console.ForegroundColor = ConsoleColor.Red;
+            Console.WriteLine("✗ Build failed.");
+            Console.ResetColor();
+            return 3;
+        }
     }
 
     private int HandleRun()

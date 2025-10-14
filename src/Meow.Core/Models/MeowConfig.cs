@@ -80,4 +80,19 @@ public class BuildConfig
     /// Enable incremental builds
     /// </summary>
     public bool Incremental { get; set; } = true;
+
+    /// <summary>
+    /// Enable wildcard selection of all .masm files in src/ directory
+    /// </summary>
+    public bool Wildcard { get; set; } = false;
+
+    /// <summary>
+    /// Enable linking of object files into a single output file
+    /// </summary>
+    public bool Link { get; set; } = false;
+
+    /// <summary>
+    /// Object file directory
+    /// </summary>
+    public string Objdir { get; set; } = "build/obj";
 }
