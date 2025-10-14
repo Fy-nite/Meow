@@ -11,6 +11,9 @@ public class ConfigService : IConfigService
     private readonly ISerializer _serializer;
     private readonly IDeserializer _deserializer;
 
+    /// <summary>
+    /// Creates a new instance of ConfigService with default YAML settings
+    /// </summary>
     public ConfigService()
     {
         _serializer = new SerializerBuilder()
@@ -22,6 +25,7 @@ public class ConfigService : IConfigService
             .Build();
     }
 
+    /// <inheritdoc />
     public async Task<Models.MeowConfig> LoadConfigAsync(string path)
     {
         if (!File.Exists(path))
@@ -33,12 +37,14 @@ public class ConfigService : IConfigService
         return _deserializer.Deserialize<Models.MeowConfig>(yaml);
     }
 
+    /// <inheritdoc />
     public async Task SaveConfigAsync(Models.MeowConfig config, string path)
     {
         var yaml = _serializer.Serialize(config);
         await File.WriteAllTextAsync(path, yaml);
     }
 
+    /// <inheritdoc />
     public bool ConfigExists(string path)
     {
         return File.Exists(path);

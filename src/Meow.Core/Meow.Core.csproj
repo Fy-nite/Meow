@@ -4,7 +4,20 @@
     <TargetFramework>net9.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <Version>0.1.0</Version>
+    <Description>Core library for Meow build orchestration tool. Provides APIs for managing MASM projects, configuration, and templates.</Description>
+    <Authors>Fy-nite</Authors>
+    <PackageProjectUrl>https://github.com/Fy-nite/Meow</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/Fy-nite/Meow</RepositoryUrl>
+    <PackageLicenseExpression>AGPL-3.0-or-later</PackageLicenseExpression>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageTags>masm;build-tool;micro-assembly;project-management;tooling</PackageTags>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
   </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="..\..\README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="YamlDotNet" Version="16.3.0" />

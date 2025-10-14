@@ -18,6 +18,11 @@
     <PackageProjectUrl>https://github.com/Fy-nite/Meow</PackageProjectUrl>
     <RepositoryUrl>https://github.com/Fy-nite/Meow</RepositoryUrl>
     <PackageLicenseExpression>AGPL-3.0-or-later</PackageLicenseExpression>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
   </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="..\..\README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
 
 </Project>

@@ -9,11 +9,16 @@ public class ProjectService : IProjectService
 {
     private readonly IConfigService _configService;
 
+    /// <summary>
+    /// Creates a new instance of ProjectService
+    /// </summary>
+    /// <param name="configService">Configuration service instance</param>
     public ProjectService(IConfigService configService)
     {
         _configService = configService;
     }
 
+    /// <inheritdoc />
     public async Task<bool> InitializeMasmProjectAsync(string name, string path, string? author = null)
     {
         try
@@ -73,6 +78,7 @@ public class ProjectService : IProjectService
         }
     }
 
+    /// <inheritdoc />
     public bool IsExistingProject(string path)
     {
         return _configService.ConfigExists(Path.Combine(path, "meow.yaml"));
