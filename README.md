@@ -22,11 +22,13 @@
 - ✅ CLI framework with help and version commands
 - ✅ Library API for extensibility
 
-### Phase 2: Build & Execution (Coming Soon)
-- 🔄 MASM build orchestration via Rust MASM interpreter
-- 🔄 Debug/release build modes
-- 🔄 Incremental build support
-- 🔄 `meow build` and `meow run` commands
+### Phase 2: Build & Execution ✅
+- ✅ Wildcard source file detection
+- ✅ Object file generation (.masm → .masi)
+- ✅ Optional linking of object files
+- ✅ `meow build` command with --clean and --mode flags
+- 🔄 MASM execution via Rust MASM interpreter
+- 🔄 `meow run` command
 
 ### Phase 3: Package Management (Planned)
 - 📋 PurrNet integration for dependencies
@@ -104,9 +106,53 @@ build:
   output: build
   target: default
   incremental: true
+  wildcard: false    # Enable to build all .masm files in src/
+  link: false        # Enable to link object files into single output
+  objdir: build/obj  # Object file directory
 dependencies: {}
 devDependencies: {}
 scripts: {}
+```
+
+### Building Your Project
+
+```bash
+# Build the project
+meow build
+
+# Build with clean
+meow build --clean
+
+# Build in release mode
+meow build --mode release
+```
+
+**Wildcard Build Example:**
+
+For multi-file projects, enable wildcard mode:
+
+```yaml
+build:
+  wildcard: true
+  link: true
+```
+
+Directory structure:
+```
+src/
+  main.masm
+  util.masm
+  sub/feature.masm
+```
+
+After `meow build`:
+```
+build/
+  obj/
+    main.masi
+    util.masi
+    sub_feature.masi
+  my-masm-app.masi  # linked output
 ```
 
 ## Usage
@@ -121,10 +167,14 @@ meow --help
 # Initialize a project
 meow init [project-name]
 
-# Build the project (Phase 2)
+# Build the project
 meow build
 
-# Run the project (Phase 2)
+# Build with options
+meow build --clean
+meow build --mode release
+
+# Run the project (Phase 2 - Not yet implemented)
 meow run
 
 # Run tests (Phase 4)

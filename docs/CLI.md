@@ -51,18 +51,16 @@ meow init
 
 Build the MASM project.
 
-**Status:** Phase 2 (Not Yet Implemented)
+**Status:** Implemented
 
 **Usage:**
 ```bash
 meow build [OPTIONS]
 ```
 
-**Planned Options:**
-- `--mode <debug|release>` - Build mode (default: debug)
-- `--output <DIR>` - Output directory (default: build)
-- `--incremental` - Enable incremental builds
-- `--clean` - Clean before building
+**Options:**
+- `--mode <debug|release>` - Build mode (default: debug from config)
+- `--clean` - Clean build directory before building
 
 **Examples:**
 ```bash
@@ -75,6 +73,19 @@ meow build --mode release
 # Clean build
 meow build --clean
 ```
+
+**Build Process:**
+1. Reads `meow.yaml` configuration
+2. If `wildcard: true`, finds all `.masm` files in `src/` directory (recursively)
+3. If `wildcard: false`, builds only the main file specified in config
+4. Assembles each `.masm` file to a `.masi` object file in the objdir (default: `build/obj/`)
+5. If `link: true`, links all object files into a single output file in the build directory
+6. If `link: false`, only generates object files
+
+**Exit Codes:**
+- `0` - Build succeeded
+- `2` - Configuration error (no meow.yaml found)
+- `3` - Build error
 
 ---
 
@@ -206,6 +217,9 @@ build:
   output: build            # Output directory
   target: default          # Target platform
   incremental: true        # Enable incremental builds
+  wildcard: false          # Enable wildcard selection of all .masm files in src/
+  link: false              # Enable linking of object files into single output
+  objdir: build/obj        # Object file directory
 
 # Dependencies from PurrNet
 dependencies:
@@ -220,6 +234,43 @@ devDependencies:
 scripts:
   test: "meow test"
   deploy: "meow build --mode release && deploy.sh"
+```
+
+### Build Configuration Details
+
+**Wildcard Mode:**
+- When `wildcard: true`, Meow automatically finds and builds all `.masm` files in the `src/` directory recursively
+- When `wildcard: false` (default), only the file specified in `main` is built
+
+**Linking:**
+- When `link: true`, all assembled object files are linked into a single output file named `{project-name}.masi` in the output directory
+- When `link: false` (default), only object files are generated
+
+**Object Directory:**
+- Object files (`.masi`) are placed in `objdir` (default: `build/obj/`)
+- File paths with subdirectories are flattened (e.g., `src/sub/feature.masm` → `build/obj/sub_feature.masi`)
+
+**Example Multi-File Project:**
+```
+src/
+  main.masm
+  util.masm
+  sub/feature.masm
+
+meow.yaml:
+  build:
+    wildcard: true
+    link: true
+    output: "build"
+    objdir: "build/obj"
+
+After `meow build`:
+build/
+  obj/
+    main.masi
+    util.masi
+    sub_feature.masi
+  my-project.masi   # linked output
 ```
 
 ## Environment Variables
