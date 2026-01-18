@@ -1,0 +1,19 @@
+name: testproj
+version: 0.1.0
+description: A testproj CSharp project
+authors:
+- Charlie
+type: ObjectIR
+main: src/Program.cs
+build:
+  mode: debug
+  output: build
+  target: default
+  compiler: SharpIR
+  incremental: true
+  wildcard: false
+  link: false
+  objdir: build/obj
+dependencies: {}
+devDependencies: {}
+scripts: {}

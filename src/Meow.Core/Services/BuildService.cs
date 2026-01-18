@@ -1,22 +1,65 @@
 using Meow.Core.Models;
+using System.Linq;
 
 namespace Meow.Core.Services;
 
 /// <summary>
-/// Implementation of build service for MASM projects
+/// Implementation of build service (compiler-agnostic)
 /// </summary>
 public class BuildService : IBuildService
 {
     private readonly IConfigService _configService;
-
-    /// <summary>
-    /// Creates a new instance of BuildService
-    /// </summary>
-    /// <param name="configService">Configuration service instance</param>
+    
     public BuildService(IConfigService configService)
     {
         _configService = configService;
     }
+
+    /// <summary>
+    /// Debug an executable using the specified compiler implementation.
+    /// This will create the compiler instance and call its DebugAsync method.
+    /// </summary>
+    public async Task<bool> DebugExecutableAsync(string compilerName, string executable, string? stdinFile = null)
+    {
+        try
+        {
+            var compiler = CreateCompiler(compilerName);
+            if (compiler == null)
+            {
+                Console.WriteLine($"Unknown compiler: {compilerName}");
+                return false;
+            }
+            return await compiler.DebugAsync(executable, stdinFile);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error debugging {executable}: {ex.Message}");
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Run an executable using the specified compiler implementation.
+    /// </summary>
+    public async Task<bool> RunExecutableAsync(string compilerName, string executable, string? stdinFile = null)
+    {
+        try
+        {
+            var compiler = CreateCompiler(compilerName);
+            if (compiler == null)
+            {
+                Console.WriteLine($"Unknown compiler: {compilerName}");
+                return false;
+            }
+            return await compiler.RunAsync(executable, stdinFile);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error running {executable}: {ex.Message}");
+            return false;
+        }
+    }
+    
 
     /// <inheritdoc />
     public async Task<bool> BuildProjectAsync(string projectPath, bool clean = false)
@@ -44,7 +87,15 @@ public class BuildService : IBuildService
             Directory.CreateDirectory(buildDir);
             Directory.CreateDirectory(objDir);
 
-            // Get source files
+            // Create compiler based on config
+            var compiler = CreateCompiler(config.Build.Compiler);
+            if (compiler == null)
+            {
+                Console.WriteLine($"Unknown compiler: {config.Build.Compiler}");
+                return false;
+            }
+
+            // Get source files using the selected compiler
             var sourceFiles = GetSourceFiles(projectPath, config);
 
             if (sourceFiles.Count == 0)
@@ -59,11 +110,11 @@ public class BuildService : IBuildService
                 Console.WriteLine($"  - {file}");
             }
 
-            // Assemble each source file to object file
+            // Assemble each source file to object file using the selected compiler
             var objectFiles = new List<string>();
             foreach (var sourceFile in sourceFiles)
             {
-                var objFile = AssembleToObject(projectPath, sourceFile, objDir);
+                var objFile = await compiler.AssembleAsync(projectPath, sourceFile, objDir, config.Build);
                 if (objFile != null)
                 {
                     objectFiles.Add(objFile);
@@ -84,10 +135,11 @@ public class BuildService : IBuildService
             // Link if enabled
             if (config.Build.Link && objectFiles.Count > 0)
             {
-                var outputFile = Path.Combine(projectPath, config.Build.Output, 
-                    $"{config.Name}.masi");
-                
-                if (LinkObjectFiles(objectFiles, outputFile))
+                var outputExt = compiler.Name == "masm" ? ".masi" : "";
+                var outputFile = Path.Combine(projectPath, config.Build.Output,
+                    $"{config.Name}{outputExt}");
+
+                if (await compiler.LinkAsync(objectFiles, outputFile, config.Build))
                 {
                     Console.WriteLine($"\nLinked output: {Path.GetFileName(outputFile)}");
                 }
@@ -113,6 +165,7 @@ public class BuildService : IBuildService
 
     private List<string> GetSourceFiles(string projectPath, MeowConfig config)
     {
+        var compiler = CreateCompiler(config.Build.Compiler) ?? new MasmCompiler();
         var sourceFiles = new List<string>();
         var srcDir = Path.Combine(projectPath, "src");
 
@@ -124,11 +177,15 @@ public class BuildService : IBuildService
 
         if (config.Build.Wildcard)
         {
-            // Get all .masm files recursively
-            var files = Directory.GetFiles(srcDir, "*.masm", SearchOption.AllDirectories);
-            foreach (var file in files)
+            // Get all matching files recursively for supported extensions
+            foreach (var ext in compiler.SourceExtensions)
             {
-                sourceFiles.Add(Path.GetRelativePath(projectPath, file));
+                var pattern = "*" + ext;
+                var files = Directory.GetFiles(srcDir, pattern, SearchOption.AllDirectories);
+                foreach (var file in files)
+                {
+                    sourceFiles.Add(Path.GetRelativePath(projectPath, file));
+                }
             }
         }
         else
@@ -144,84 +201,44 @@ public class BuildService : IBuildService
         return sourceFiles;
     }
 
-    private string? AssembleToObject(string projectPath, string sourceFile, string objDir)
+    // MASM-specific assembly/linking logic moved to MasmCompiler
+    /// <summary>
+    /// Runs a MASI executable using masm --run
+    /// </summary>
+    /// <param name="masiFile">Path to the .masi file</param>
+    /// <param name="stdinFile">Optional path to stdin file</param>
+    /// <returns>True if run succeeded, false otherwise</returns>
+    public bool RunMasiFile(string masiFile, string? stdinFile = null)
     {
         try
         {
-            var fullSourcePath = Path.Combine(projectPath, sourceFile);
-            
-            // Generate object file name
-            // Convert path separators to underscores for flat output
-            var relativePath = sourceFile.Replace("src/", "").Replace("src\\", "");
-            var objectFileName = relativePath
-                .Replace(Path.DirectorySeparatorChar, '_')
-                .Replace(Path.AltDirectorySeparatorChar, '_')
-                .Replace(".masm", ".masi");
-            
-            var objectFilePath = Path.Combine(objDir, objectFileName);
-
-            // Read source file
-            var sourceContent = File.ReadAllText(fullSourcePath);
-
-            // Simulate assembly process - in reality this would call the MASM interpreter
-            // For now, we'll create a mock object file with metadata
-            var objectContent = GenerateObjectFileContent(sourceFile, sourceContent);
-
-            // Write object file
-            File.WriteAllText(objectFilePath, objectContent);
-
-            return objectFilePath;
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Error assembling {sourceFile}: {ex.Message}");
-            return null;
-        }
-    }
-
-    private string GenerateObjectFileContent(string sourceFile, string sourceContent)
-    {
-        // Mock object file format - in reality, this would be binary/intermediate format
-        // from the MASM interpreter
-        var timestamp = DateTime.UtcNow.ToString("o");
-        return $@"; MASM Object File
-; Source: {sourceFile}
-; Assembled: {timestamp}
-; Format: MASI v1.0
-
-; Original source (for demonstration):
-{sourceContent}
-
-; [In a real implementation, this would contain assembled bytecode/intermediate representation]
-";
-    }
-
-    private bool LinkObjectFiles(List<string> objectFiles, string outputFile)
-    {
-        try
-        {
-            // Simulate linking process - in reality this would combine object files
-            var linkedContent = "; MASM Linked Executable\n";
-            linkedContent += $"; Linked: {DateTime.UtcNow:o}\n";
-            linkedContent += $"; Object files: {objectFiles.Count}\n\n";
-
-            foreach (var objFile in objectFiles)
+            var process = new System.Diagnostics.Process();
+            process.StartInfo.FileName = "masm";
+            var args = $"\"{masiFile}\" --run";
+            if (!string.IsNullOrEmpty(stdinFile))
             {
-                linkedContent += $"; Including: {Path.GetFileName(objFile)}\n";
-                var content = File.ReadAllText(objFile);
-                linkedContent += content + "\n\n";
+                args += $" --stdin-from \"{stdinFile}\"";
             }
-
-            linkedContent += "; [In a real implementation, this would contain linked executable code]\n";
-
-            // Write linked output
-            File.WriteAllText(outputFile, linkedContent);
-
+            process.StartInfo.Arguments = args;
+            process.StartInfo.RedirectStandardOutput = true;
+            process.StartInfo.RedirectStandardError = true;
+            process.StartInfo.UseShellExecute = false;
+            process.StartInfo.CreateNoWindow = true;
+            process.Start();
+            string output = process.StandardOutput.ReadToEnd();
+            string error = process.StandardError.ReadToEnd();
+            process.WaitForExit();
+            Console.WriteLine(output);
+            if (process.ExitCode != 0)
+            {
+                Console.WriteLine($"masm run error: {error}");
+                return false;
+            }
             return true;
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error linking: {ex.Message}");
+            Console.WriteLine($"Error running {masiFile}: {ex.Message}");
             return false;
         }
     }
@@ -235,5 +252,22 @@ public class BuildService : IBuildService
             Console.WriteLine($"Cleaning build directory: {buildConfig.Output}");
             Directory.Delete(buildDir, true);
         }
+    }
+
+    public ICompiler? CreateCompiler(string compilerName)
+    {
+        if (string.IsNullOrWhiteSpace(compilerName))
+            return new MasmCompiler();
+
+        return compilerName.ToLowerInvariant() switch
+        {
+            "masm" => new MasmCompiler(),
+            "sharpir" => new SharpIrCompiler(),
+            "uhigh" => new UhighCompiler(),
+            "objectfortran" => new ObjectFortranCompiler(),
+            "objectivepascal" => new ObjectivePascalCompiler(),
+            // future compilers: "nasm" => new NasmCompiler(),
+            _ => null
+        };
     }
 }

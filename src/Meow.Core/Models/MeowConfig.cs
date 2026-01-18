@@ -33,7 +33,7 @@ public class MeowConfig
     /// <summary>
     /// Main entry point file
     /// </summary>
-    public string Main { get; set; } = "src/main.masm";
+    public string Main { get; set; } = "";
 
     /// <summary>
     /// Build configuration
@@ -75,6 +75,11 @@ public class BuildConfig
     /// Target platform
     /// </summary>
     public string Target { get; set; } = "default";
+
+    /// <summary>
+    /// Compiler to use for the project (e.g., "masm", "nasm")
+    /// </summary>
+    public string Compiler { get; set; } = "masm";
 
     /// <summary>
     /// Enable incremental builds

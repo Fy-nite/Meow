@@ -37,7 +37,7 @@ public class CommandHandler
     private int ShowVersion()
     {
         Console.WriteLine($"Meow version {Version}");
-        Console.WriteLine("Build orchestration tool for MASM projects");
+        Console.WriteLine("Build orchestration tool for multiple compilers (MASM, SharpIR, Uhigh, ...)");
         return 0;
     }
 
@@ -50,14 +50,17 @@ public class CommandHandler
  | |  | |  __/ (_) \ V  V / 
  |_|  |_|\___|\___/ \_/\_/  
 
-Meow - Build orchestration tool for MASM projects
+Meow - Build orchestration tool for multiple compilers
+
+Supports projects targeting MASM and other compilers (SharpIR, Uhigh, ObjectFortran, ObjectivePascal)
 
 USAGE:
     meow [COMMAND] [OPTIONS]
 
 COMMANDS:
-    init        Initialize a new MASM project
+    init        Initialize a new project (compiler selectable)
     build       Build the project
+    build --debug   Build and debug the project (if supported by compiler)
     run         Run the project
     test        Run project tests
     install     Install dependencies from PurrNet
@@ -66,8 +69,8 @@ COMMANDS:
     help        Show this help message
     --version   Show version information
 
-PHASE 1 - PROJECT SETUP (CURRENT):
-    meow init [name]        Create a new MASM project
+PROJECT SETUP:
+    meow init [name]        Create a new project (defaults to MASM but can be changed in meow.yaml)
     meow --version          Display version information
     meow --help             Display this help
 
@@ -75,6 +78,7 @@ EXAMPLES:
     meow init my-project    Create a new project called 'my-project'
     meow init               Create a project in the current directory
     meow build              Build the current project
+    meow build --debug      Build and debug the current project (if available)
     meow run                Run the current project
 
 For more information, visit: https://github.com/Fy-nite/Meow
@@ -101,7 +105,7 @@ For more information, visit: https://github.com/Fy-nite/Meow
             projectName = Path.GetFileName(projectPath);
         }
 
-        Console.WriteLine($"Initializing new MASM project: {projectName}");
+        Console.WriteLine($"Initializing new project: {projectName}");
 
         if (projectService.IsExistingProject(projectPath))
         {
@@ -114,7 +118,14 @@ For more information, visit: https://github.com/Fy-nite/Meow
         var author = Environment.GetEnvironmentVariable("USER") ?? 
                     Environment.GetEnvironmentVariable("USERNAME");
 
-        var success = await projectService.InitializeMasmProjectAsync(projectName, projectPath, author);
+        // allow specifying compiler as second arg: meow init name [compiler]
+        string compiler = "masm";
+        if (args.Length > 1 && !string.IsNullOrWhiteSpace(args[1]))
+        {
+            compiler = args[1].ToLowerInvariant();
+        }
+
+        var success = await projectService.InitializeProjectAsync(projectName, projectPath, compiler, author);
 
         if (success)
         {
@@ -149,8 +160,9 @@ For more information, visit: https://github.com/Fy-nite/Meow
         var buildService = new BuildService(configService);
 
         // Parse arguments
-        bool clean = false;
-        string? mode = null;
+    bool clean = false;
+    bool debug = false;
+    string? mode = null;
 
         for (int i = 0; i < args.Length; i++)
         {
@@ -158,6 +170,9 @@ For more information, visit: https://github.com/Fy-nite/Meow
             {
                 case "--clean":
                     clean = true;
+                    break;
+                case "--debug":
+                    debug = true;
                     break;
                 case "--mode":
                     if (i + 1 < args.Length)
@@ -189,7 +204,7 @@ For more information, visit: https://github.com/Fy-nite/Meow
             await configService.SaveConfigAsync(config, configPath);
         }
 
-        Console.WriteLine("Building MASM project...");
+        Console.WriteLine("Building project...");
         Console.WriteLine();
 
         var success = await buildService.BuildProjectAsync(projectPath, clean);
@@ -200,6 +215,35 @@ For more information, visit: https://github.com/Fy-nite/Meow
             Console.ForegroundColor = ConsoleColor.Green;
             Console.WriteLine("✓ Build completed successfully!");
             Console.ResetColor();
+            // If debug flag, run debugger on output file
+            if (debug)
+            {
+                // Try to get output file path from config
+                var config = await configService.LoadConfigAsync(configPath);
+                // Determine output file based on compiler
+                var outputExt = config.Build.Compiler == "masm" ? ".masi" : "";
+                var outputFile = Path.Combine(projectPath, config.Build.Output, $"{config.Name}{outputExt}");
+                if (File.Exists(outputFile))
+                {
+                    Console.WriteLine($"\nStarting debugger for {outputFile} ...\n");
+                    // For MASM we have a helper in BuildService; for other compilers use compiler.DebugAsync via BuildService if exposed
+                    var debugSuccess = await buildService.DebugExecutableAsync(config.Build.Compiler, outputFile);
+                    if (!debugSuccess)
+                    {
+                        Console.ForegroundColor = ConsoleColor.Red;
+                        Console.WriteLine("✗ Debug session failed.");
+                        Console.ResetColor();
+                        return 4;
+                    }
+                }
+                else
+                {
+                    Console.ForegroundColor = ConsoleColor.Red;
+                    Console.WriteLine($"Error: Output file not found for debugging: {outputFile}");
+                    Console.ResetColor();
+                    return 5;
+                }
+            }
             return 0;
         }
         else
@@ -217,7 +261,7 @@ For more information, visit: https://github.com/Fy-nite/Meow
         Console.ForegroundColor = ConsoleColor.Yellow;
         Console.WriteLine("Run command is not yet implemented (Phase 2)");
         Console.ResetColor();
-        Console.WriteLine("This will execute MASM projects using the Rust MASM interpreter");
+        Console.WriteLine("This will execute projects using the configured compiler's Run functionality");
         return 1;
     }
 
