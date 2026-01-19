@@ -1,4 +1,6 @@
 using Meow.CLI.Commands;
+using Microsoft.Extensions.DependencyInjection;
+using Meow.Core.Services;
 
 namespace Meow.CLI;
 
@@ -8,16 +10,26 @@ class Program
     {
             try
             {
-                // If you later add DI to the CLI, register the PurrNet client like this:
-                // var services = new ServiceCollection();
-                // services.AddHttpClient<Meow.Core.Services.IPurrNetService, Meow.Core.Services.PurrNetService>(c =>
-                // {
-                //     c.BaseAddress = new Uri("https://purrnet.example/api/v1/");
-                // });
-                // var provider = services.BuildServiceProvider();
-                // var purr = provider.GetRequiredService<Meow.Core.Services.IPurrNetService>();
+                // Register services with DI container
+                var services = new ServiceCollection();
+                services.AddSingleton<IConfigService, ConfigService>();
+                services.AddTransient<IProjectService, ProjectService>();
+                // Register BuildService as concrete so CommandHandler can use CreateCompiler and Debug helpers
+                services.AddTransient<BuildService>();
+                services.AddTransient<IBuildService, BuildService>();
 
-                var commandHandler = new CommandHandler();
+                // Configure HttpClient-backed PurrNet client
+                services.AddHttpClient<IPurrNetService, PurrNetService>(c =>
+                {
+                    c.BaseAddress = new Uri("https://purr.finite.ovh/api/v1/");
+                });
+
+                services.AddTransient<IInstallService, InstallService>();
+                services.AddTransient<CommandHandler>();
+
+                var provider = services.BuildServiceProvider();
+
+                var commandHandler = provider.GetRequiredService<CommandHandler>();
                 return await commandHandler.HandleCommandAsync(args);
             }
         catch (Exception ex)

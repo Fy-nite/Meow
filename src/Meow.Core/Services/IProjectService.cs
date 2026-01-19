@@ -15,6 +15,16 @@ public interface IProjectService
     Task<bool> InitializeMasmProjectAsync(string name, string path, string? author = null);
 
     /// <summary>
+    /// Initialize a project for the specified compiler/language
+    /// </summary>
+    /// <param name="name">Project name</param>
+    /// <param name="path">Directory path</param>
+    /// <param name="compiler">Compiler/language to scaffold (e.g. masm, sharpir)</param>
+    /// <param name="author">Project author</param>
+    /// <returns>True if successful</returns>
+    Task<bool> InitializeProjectAsync(string name, string path, string compiler = "masm", string? author = null);
+
+    /// <summary>
     /// Check if a directory is already a Meow project
     /// </summary>
     /// <param name="path">Directory path</param>

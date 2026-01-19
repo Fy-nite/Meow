@@ -181,6 +181,9 @@ meow update
 
 # Publish to PurrNet (Planned)
 meow publish
+ 
+ # Add a single dependency
+ meow add <package>@<version>  # alias for `meow install <package>@<version>`
 ```
 
 ## Using Meow as a Library

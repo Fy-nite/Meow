@@ -89,6 +89,78 @@ public class InstallService : IInstallService
         return true;
     }
 
+    public async Task<bool> InstallPackageAsync(string projectPath, string packageSpec, bool saveCategories = true, CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(packageSpec))
+        {
+            Console.WriteLine("Error: package spec is required (name or name@version)");
+            return false;
+        }
+
+        var parts = packageSpec.Split('@', 2, StringSplitOptions.RemoveEmptyEntries);
+        var name = parts[0];
+        var version = parts.Length > 1 ? parts[1] : null;
+
+        var configPath = Path.Combine(projectPath, "meow.yaml");
+        if (!_configService.ConfigExists(configPath))
+        {
+            Console.WriteLine("Error: meow.yaml not found in project");
+            return false;
+        }
+
+        var config = await _configService.LoadConfigAsync(configPath);
+
+        try
+        {
+            var pkg = await _purrNet.GetPackageAsync(name, version, ct);
+            if (pkg == null)
+            {
+                Console.WriteLine($"Package '{name}' not found on PurrNet");
+                return false;
+            }
+
+            var packageDir = Path.Combine(projectPath, ".meow", "packages");
+            Directory.CreateDirectory(packageDir);
+
+            var outPath = Path.Combine(packageDir, name + ".json");
+            var json = JsonSerializer.Serialize(new { pkg.Name, pkg.Version, pkg.Category, pkg.Homepage }, new JsonSerializerOptions { WriteIndented = true });
+            await File.WriteAllTextAsync(outPath, json, ct);
+
+            // add to config.Dependencies (use provided version if given, otherwise package version)
+            var depVersion = string.IsNullOrWhiteSpace(version) ? pkg.Version ?? "*" : version;
+            if (config.Dependencies == null)
+                config.Dependencies = new System.Collections.Generic.Dictionary<string, string>();
+            config.Dependencies[name] = depVersion;
+
+            if (saveCategories)
+            {
+                if (!string.IsNullOrWhiteSpace(pkg.Category))
+                {
+                    if (config.DependencyCategories == null)
+                        config.DependencyCategories = new System.Collections.Generic.Dictionary<string, string>();
+                    config.DependencyCategories[name] = pkg.Category!;
+                    Console.WriteLine($"Info: set category '{pkg.Category}' for '{name}' in meow.yaml");
+                }
+            }
+
+            // persist updated config
+            await _configService.SaveConfigAsync(config, configPath);
+
+            Console.WriteLine($"Installed {name}@{depVersion}");
+            return true;
+        }
+        catch (HttpRequestException ex)
+        {
+            Console.WriteLine($"Network error fetching '{name}': {ex.Message}");
+            return false;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error installing '{name}': {ex.Message}");
+            return false;
+        }
+    }
+
     public async Task<bool> UpdateAsync(string projectPath, CancellationToken ct = default)
     {
         // For now, update simply re-runs install which refreshes metadata and categories

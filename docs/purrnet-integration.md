@@ -2,7 +2,7 @@
 
 This document describes how Meow can integrate with PurrNet to discover and use libraries hosted on the PurrNet repository.
 
-Base URL: `https://purrnet.example/api/v1` (replace with your real PurrNet URL)
+Base URL: `https://purr.finite.ovh/api/v1` 
 
 Overview
 - Search packages: `GET /packages?search={query}&page={n}&pageSize={m}`
@@ -24,7 +24,7 @@ The repository includes an interface `IPurrNetService` and a basic `PurrNetServi
 // In an ASP.NET Core or generic host startup:
 services.AddHttpClient<IPurrNetService, PurrNetService>(c =>
 {
-    c.BaseAddress = new Uri("https://purrnet.example/api/v1/");
+    c.BaseAddress = new Uri("https://purr.finite.ovh/api/v1/");
 });
 ```
 

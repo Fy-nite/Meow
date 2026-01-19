@@ -156,6 +156,9 @@ meow install
 
 # Install a specific package
 meow install stdlib@^1.0.0
+
+# Alias: add a single package (convenience)
+meow add stdlib@^1.0.0
 ```
 
 ---

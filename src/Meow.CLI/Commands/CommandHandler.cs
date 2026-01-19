@@ -1,4 +1,5 @@
 using Meow.Core.Services;
+using System.Reflection;
 
 namespace Meow.CLI.Commands;
 
@@ -9,6 +10,19 @@ public class CommandHandler
 {
     private const string Version = "0.1.0";
     
+    private readonly IConfigService _configService;
+    private readonly IProjectService _projectService;
+    private readonly BuildService _buildService;
+    private readonly IInstallService _installService;
+
+    public CommandHandler(IConfigService configService, IProjectService projectService, BuildService buildService, IInstallService installService)
+    {
+        _configService = configService;
+        _projectService = projectService;
+        _buildService = buildService;
+        _installService = installService;
+    }
+
     public async Task<int> HandleCommandAsync(string[] args)
     {
         if (args.Length == 0)
@@ -28,6 +42,7 @@ public class CommandHandler
             "run" => HandleRun(),
             "test" => HandleTest(),
             "install" => await HandleInstallAsync(),
+            "add" => await HandleAddAsync(args[1..]),
             "update" => await HandleUpdateAsync(),
             "lint" => await HandleLintAsync(),
             "publish" => HandlePublish(),
@@ -89,8 +104,6 @@ For more information, visit: https://github.com/Fy-nite/Meow
 
     private async Task<int> HandleInitAsync(string[] args)
     {
-        var configService = new ConfigService();
-        var projectService = new ProjectService(configService);
 
         string projectName;
         string projectPath;
@@ -108,7 +121,7 @@ For more information, visit: https://github.com/Fy-nite/Meow
 
         Console.WriteLine($"Initializing new project: {projectName}");
 
-        if (projectService.IsExistingProject(projectPath))
+        if (_projectService.IsExistingProject(projectPath))
         {
             Console.ForegroundColor = ConsoleColor.Yellow;
             Console.WriteLine($"Warning: Directory already contains a meow.yaml file");
@@ -126,7 +139,37 @@ For more information, visit: https://github.com/Fy-nite/Meow
             compiler = args[1].ToLowerInvariant();
         }
 
-        var success = await projectService.InitializeProjectAsync(projectName, projectPath, compiler, author);
+        // Invoke an initialization method on the project service via reflection so different implementations are supported.
+        var svcType = _projectService.GetType();
+        var initMethod = svcType.GetMethod("InitializeProjectAsync")
+                      ?? svcType.GetMethod("InitializeAsync")
+                      ?? svcType.GetMethod("CreateProjectAsync");
+
+        if (initMethod == null)
+        {
+            Console.ForegroundColor = ConsoleColor.Red;
+            Console.WriteLine("Error: the project service does not expose an initialization method.");
+            Console.ResetColor();
+            return 1;
+        }
+
+        bool success;
+        var initResult = initMethod.Invoke(_projectService, new object[] { projectName, projectPath, compiler, author });
+        if (initResult is Task<bool> initTask)
+        {
+            success = await initTask;
+        }
+        else if (initResult is bool syncResult)
+        {
+            success = syncResult;
+        }
+        else
+        {
+            Console.ForegroundColor = ConsoleColor.Red;
+            Console.WriteLine("Error: initialization method returned an unexpected result.");
+            Console.ResetColor();
+            return 1;
+        }
 
         if (success)
         {
@@ -136,7 +179,7 @@ For more information, visit: https://github.com/Fy-nite/Meow
             Console.WriteLine();
             Console.WriteLine("Created:");
             Console.WriteLine($"  - meow.yaml");
-            Console.WriteLine($"  - src/main.masm");
+            Console.WriteLine($"  - src/main.{compiler}");
             Console.WriteLine($"  - README.md");
             Console.WriteLine($"  - .gitignore");
             Console.WriteLine();
@@ -157,8 +200,7 @@ For more information, visit: https://github.com/Fy-nite/Meow
 
     private async Task<int> HandleBuildAsync(string[] args)
     {
-        var configService = new ConfigService();
-        var buildService = new BuildService(configService);
+        // use injected services
 
         // Parse arguments
     bool clean = false;
@@ -188,7 +230,7 @@ For more information, visit: https://github.com/Fy-nite/Meow
         var projectPath = Directory.GetCurrentDirectory();
         var configPath = Path.Combine(projectPath, "meow.yaml");
 
-        if (!configService.ConfigExists(configPath))
+        if (!_configService.ConfigExists(configPath))
         {
             Console.ForegroundColor = ConsoleColor.Red;
             Console.WriteLine("Error: No meow.yaml found in current directory.");
@@ -200,15 +242,15 @@ For more information, visit: https://github.com/Fy-nite/Meow
         // Override mode if specified
         if (!string.IsNullOrEmpty(mode))
         {
-            var config = await configService.LoadConfigAsync(configPath);
+            var config = await _configService.LoadConfigAsync(configPath);
             config.Build.Mode = mode;
-            await configService.SaveConfigAsync(config, configPath);
+            await _configService.SaveConfigAsync(config, configPath);
         }
 
         Console.WriteLine("Building project...");
         Console.WriteLine();
 
-        var success = await buildService.BuildProjectAsync(projectPath, clean);
+        var success = await _buildService.BuildProjectAsync(projectPath, clean);
 
         if (success)
         {
@@ -220,7 +262,7 @@ For more information, visit: https://github.com/Fy-nite/Meow
             if (debug)
             {
                 // Try to get output file path from config
-                var config = await configService.LoadConfigAsync(configPath);
+                var config = await _configService.LoadConfigAsync(configPath);
                 // Determine output file based on compiler
                 var outputExt = config.Build.Compiler == "masm" ? ".masi" : "";
                 var outputFile = Path.Combine(projectPath, config.Build.Output, $"{config.Name}{outputExt}");
@@ -228,7 +270,7 @@ For more information, visit: https://github.com/Fy-nite/Meow
                 {
                     Console.WriteLine($"\nStarting debugger for {outputFile} ...\n");
                     // For MASM we have a helper in BuildService; for other compilers use compiler.DebugAsync via BuildService if exposed
-                    var debugSuccess = await buildService.DebugExecutableAsync(config.Build.Compiler, outputFile);
+                    var debugSuccess = await _buildService.DebugExecutableAsync(config.Build.Compiler, outputFile);
                     if (!debugSuccess)
                     {
                         Console.ForegroundColor = ConsoleColor.Red;
@@ -276,13 +318,9 @@ For more information, visit: https://github.com/Fy-nite/Meow
 
     private async Task<int> HandleInstallAsync()
     {
-        var configService = new ConfigService();
-        var purr = new Meow.Core.Services.PurrNetService(new System.Net.Http.HttpClient { BaseAddress = new Uri("https://purrnet.example/api/v1/") });
-        var installer = new InstallService(configService, purr);
-
         var projectPath = Directory.GetCurrentDirectory();
         Console.WriteLine("Installing dependencies from PurrNet...");
-        var ok = await installer.InstallAsync(projectPath);
+        var ok = await _installService.InstallAsync(projectPath);
         if (ok)
         {
             Console.ForegroundColor = ConsoleColor.Green;
@@ -301,13 +339,9 @@ For more information, visit: https://github.com/Fy-nite/Meow
 
     private async Task<int> HandleUpdateAsync()
     {
-        var configService = new ConfigService();
-        var purr = new Meow.Core.Services.PurrNetService(new System.Net.Http.HttpClient { BaseAddress = new Uri("https://purrnet.example/api/v1/") });
-        var installer = new InstallService(configService, purr);
-
         var projectPath = Directory.GetCurrentDirectory();
         Console.WriteLine("Updating dependencies from PurrNet...");
-        var ok = await installer.UpdateAsync(projectPath);
+        var ok = await _installService.UpdateAsync(projectPath);
         if (ok)
         {
             Console.ForegroundColor = ConsoleColor.Green;
@@ -324,23 +358,49 @@ For more information, visit: https://github.com/Fy-nite/Meow
         }
     }
 
+    private async Task<int> HandleAddAsync(string[] args)
+    {
+        var projectPath = Directory.GetCurrentDirectory();
+
+        if (args.Length == 0)
+        {
+            // alias to install all
+            return await HandleInstallAsync();
+        }
+
+        // Install specific package: meow add name@version
+        var pkgSpec = args[0];
+        Console.WriteLine($"Installing package: {pkgSpec}");
+        var ok = await _installService.InstallPackageAsync(projectPath, pkgSpec);
+        if (ok)
+        {
+            Console.ForegroundColor = ConsoleColor.Green;
+            Console.WriteLine($"✓ Added {pkgSpec}");
+            Console.ResetColor();
+            return 0;
+        }
+        else
+        {
+            Console.ForegroundColor = ConsoleColor.Red;
+            Console.WriteLine($"✗ Failed to add {pkgSpec}");
+            Console.ResetColor();
+            return 1;
+        }
+    }
+
     private async Task<int> HandleLintAsync()
     {
-        var configService = new ConfigService();
-        var buildService = new BuildService(configService);
-
         var projectPath = Directory.GetCurrentDirectory();
         var configPath = Path.Combine(projectPath, "meow.yaml");
-        if (!configService.ConfigExists(configPath))
+        if (!_configService.ConfigExists(configPath))
         {
             Console.ForegroundColor = ConsoleColor.Red;
             Console.WriteLine("Error: No meow.yaml found in current directory.");
             Console.ResetColor();
             return 2;
         }
-
-        var config = await configService.LoadConfigAsync(configPath);
-        var compiler = buildService.CreateCompiler(config.Build.Compiler);
+        var config = await _configService.LoadConfigAsync(configPath);
+        var compiler = _buildService.CreateCompiler(config.Build.Compiler);
         if (compiler == null)
         {
             Console.ForegroundColor = ConsoleColor.Red;
