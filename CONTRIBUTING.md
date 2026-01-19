@@ -70,21 +70,16 @@ Meow/
 - Follow the existing code style
 - Write clear commit messages
 
-## Roadmap Phases
+## Roadmap Features
 
-Contributions are welcome for any phase:
+Contributions are welcome — focus areas include:
 
-### Phase 1: Project Setup (Current)
-Focus on improving project initialization and templates
+- Project initialization and templates
+- Build orchestration and execution (meow build, meow run)
+- Package management and PurrNet integration (meow install/update/publish)
+- Testing infrastructure and automation (meow test)
+- Developer experience improvements (colorized output, hooks, scripts)
 
-### Phase 2: Build & Execution
-Implement MASM build and run capabilities
-
-### Phase 3: Package Management
-Add PurrNet integration
-
-### Phase 4: Developer Experience
-Enhance CLI output and usability
 
 ## Questions?
 

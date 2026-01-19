@@ -10,8 +10,8 @@ namespace Meow.Core.Services;
 public class UhighCompiler : ICompiler
 {
     public string Name => "uhigh";
-
     public IEnumerable<string> SourceExtensions => new[] { ".uh" };
+    public IEnumerable<string> SupportedDependencyCategories => new[] { "uhigh", "runtime" };
 
     public async Task<string?> AssembleAsync(string projectPath, string sourcePath, string objDir, BuildConfig buildConfig)
     {

@@ -16,6 +16,12 @@ public interface ICompiler
     IEnumerable<string> SourceExtensions { get; }
 
     /// <summary>
+    /// Categories of dependencies this compiler supports (e.g., "runtime", "native", "sharpir").
+    /// Meow will consult this list before emitting build warnings about dependencies.
+    /// </summary>
+    IEnumerable<string> SupportedDependencyCategories { get; }
+
+    /// <summary>
     /// Assemble a source file into an object file. Returns the generated object path or null on failure.
     /// </summary>
     Task<string?> AssembleAsync(string projectPath, string sourcePath, string objDir, BuildConfig buildConfig);

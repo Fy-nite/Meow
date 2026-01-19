@@ -93,7 +93,7 @@ meow build --clean
 
 Run the MASM project.
 
-**Status:** Phase 2 (Not Yet Implemented)
+**Status:** Not Implemented
 
 **Usage:**
 ```bash
@@ -122,7 +122,7 @@ meow run --mode release
 
 Run project tests.
 
-**Status:** Phase 4 (Planned)
+**Status:** Planned
 
 **Usage:**
 ```bash
@@ -139,7 +139,7 @@ meow test [OPTIONS]
 
 Install dependencies from PurrNet.
 
-**Status:** Phase 3 (Planned)
+**Status:** Planned
 
 **Usage:**
 ```bash
@@ -164,7 +164,7 @@ meow install stdlib@^1.0.0
 
 Update dependencies from PurrNet.
 
-**Status:** Phase 3 (Planned)
+**Status:** Planned
 
 **Usage:**
 ```bash
@@ -180,7 +180,7 @@ meow update [PACKAGE]
 
 Publish package to PurrNet.
 
-**Status:** Phase 3 (Planned)
+**Status:** Planned
 
 **Usage:**
 ```bash

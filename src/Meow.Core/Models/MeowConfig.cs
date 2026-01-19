@@ -46,6 +46,12 @@ public class MeowConfig
     public Dictionary<string, string> Dependencies { get; set; } = new();
 
     /// <summary>
+    /// Optional categories for dependencies. Key = package name, Value = category name.
+    /// Useful for letting compilers declare supported dependency categories.
+    /// </summary>
+    public Dictionary<string, string> DependencyCategories { get; set; } = new();
+
+    /// <summary>
     /// Development dependencies
     /// </summary>
     public Dictionary<string, string> DevDependencies { get; set; } = new();

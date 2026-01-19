@@ -10,8 +10,8 @@ namespace Meow.Core.Services;
 public class ObjectivePascalCompiler : ICompiler
 {
     public string Name => "objectivepascal";
-
     public IEnumerable<string> SourceExtensions => new[] { ".opas" };
+    public IEnumerable<string> SupportedDependencyCategories => new[] { "pascal", "runtime" };
 
     public async Task<string?> AssembleAsync(string projectPath, string sourcePath, string objDir, BuildConfig buildConfig)
     {

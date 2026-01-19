@@ -95,6 +95,42 @@ public class BuildService : IBuildService
                 return false;
             }
 
+            // Check dependency categories against compiler supported categories and warn if unsupported
+            var supportedCats = new HashSet<string>(compiler.SupportedDependencyCategories.Select(s => s.ToLowerInvariant()));
+
+            foreach (var dep in config.Dependencies.Keys)
+            {
+                if (config.DependencyCategories != null && config.DependencyCategories.TryGetValue(dep, out var cat) && !string.IsNullOrWhiteSpace(cat))
+                {
+                    var catLower = cat.ToLowerInvariant();
+                    if (!supportedCats.Contains(catLower))
+                    {
+                        Console.WriteLine($"Warning: compiler '{compiler.Name}' does not declare support for dependency category '{cat}' required by '{dep}'.");
+                    }
+                }
+                else
+                {
+                    Console.WriteLine($"Warning: dependency '{dep}' has no category specified in 'DependencyCategories'.");
+                }
+            }
+
+            // DevDependencies - warn but indicate dev-only
+            foreach (var dep in config.DevDependencies.Keys)
+            {
+                if (config.DependencyCategories != null && config.DependencyCategories.TryGetValue(dep, out var cat) && !string.IsNullOrWhiteSpace(cat))
+                {
+                    var catLower = cat.ToLowerInvariant();
+                    if (!supportedCats.Contains(catLower))
+                    {
+                        Console.WriteLine($"Warning: compiler '{compiler.Name}' does not declare support for dev dependency category '{cat}' required by '{dep}' (dev dependency). This may be okay for build-only compilers.");
+                    }
+                }
+                else
+                {
+                    Console.WriteLine($"Warning: dev dependency '{dep}' has no category specified in 'DependencyCategories'.");
+                }
+            }
+
             // Get source files using the selected compiler
             var sourceFiles = GetSourceFiles(projectPath, config);
 

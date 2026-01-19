@@ -12,8 +12,8 @@ public class SharpIrCompiler : ICompiler
 {
     public string Name => "sharpir";
     public BuildConfig BuildConfig { get; set; }
-
     public IEnumerable<string> SourceExtensions => new[] { ".sir", ".cs" };
+    public IEnumerable<string> SupportedDependencyCategories => new[] { "sharpir", "library", "runtime" };
     public static string ObjectDirectory;
 
     public async Task<string?> AssembleAsync(string projectPath, string sourcePath, string objDir, BuildConfig buildConfig)

@@ -15,31 +15,24 @@
 
 ## Features
 
-### Phase 1: Project Setup ✅ (Current)
+### Implemented Features
 - ✅ Project initialization with `meow init`
 - ✅ YAML-based configuration (`meow.yaml`)
 - ✅ Starter MASM project templates
 - ✅ CLI framework with help and version commands
 - ✅ Library API for extensibility
-
-### Phase 2: Build & Execution ✅
 - ✅ Wildcard source file detection
 - ✅ Object file generation (.masm → .masi)
 - ✅ Optional linking of object files
-- ✅ `meow build` command with --clean and --mode flags
-- 🔄 MASM execution via Rust MASM interpreter
-- 🔄 `meow run` command
+- ✅ `meow build` command with `--clean` and `--mode` flags
 
-### Phase 3: Package Management (Planned)
-- 📋 PurrNet integration for dependencies
-- 📋 `meow install`, `meow update`, and `meow publish` commands
-- 📋 Dependency tree display and lock file
-
-### Phase 4: Developer Experience (Planned)
+### Planned Features
+- 📋 MASM execution via Rust MASM interpreter (`meow run`)
+- 📋 PurrNet integration for dependencies (`meow install`, `meow update`, `meow publish`)
+- 📋 Dependency tree display and lock file for reproducible builds
 - 📋 Colorized CLI output and progress indicators
-- 📋 Script support in config file
-- 📋 Pre/post build hooks
-- 📋 Comprehensive documentation
+- 📋 Script support in config file and pre/post build hooks
+- 📋 Comprehensive documentation and example projects
 
 ## Installation
 
@@ -174,19 +167,19 @@ meow build
 meow build --clean
 meow build --mode release
 
-# Run the project (Phase 2 - Not yet implemented)
+# Run the project (Not yet implemented)
 meow run
 
-# Run tests (Phase 4)
+# Run tests (Planned)
 meow test
 
-# Install dependencies (Phase 3)
+# Install dependencies (Planned)
 meow install
 
-# Update dependencies (Phase 3)
+# Update dependencies (Planned)
 meow update
 
-# Publish to PurrNet (Phase 3)
+# Publish to PurrNet (Planned)
 meow publish
 ```
 
@@ -237,26 +230,20 @@ This separation allows Meow to be used both as a standalone CLI tool and as a li
 
 ## Development Roadmap
 
-### Phase 1: Project Setup ✅
+### Implemented
 - [x] Establish C# solution structure and CLI framework
 - [x] Implement basic CLI commands: `meow --version`, `meow --help`
 - [x] Project initialization: `meow init` for MASM projects with templates
 - [x] Generate `meow.yaml` configuration and starter MASM file structure
 - [x] Create library API for extensibility
 
-### Phase 2: Build & Execution
-- [ ] MASM build orchestration via Rust MASM interpreter
-- [ ] Debug/release build modes and incremental build support
-- [ ] `meow build` and `meow run` commands
-
-### Phase 3: Package Management
-- [ ] PurrNet integration for MASM dependencies
-- [ ] `meow install`, `meow update`, and `meow publish` commands
+### Planned
+- [ ] MASM execution and orchestration via Rust MASM interpreter (`meow run`)
+- [ ] Debug/release build modes and incremental build improvements
+- [ ] PurrNet integration for dependency management (`meow install`, `meow update`, `meow publish`)
 - [ ] Dependency tree display and lock file for reproducible builds
-
-### Phase 4: Developer Experience
 - [ ] Colorized CLI output, progress indicators, and improved error messages
-- [ ] Script support in config file, pre/post build hooks
+- [ ] Script support in config file and pre/post build hooks
 - [ ] Comprehensive documentation and example projects
 
 ## Contributing

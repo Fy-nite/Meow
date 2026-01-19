@@ -19,7 +19,7 @@ public class CommandHandler
 
         var command = args[0].ToLowerInvariant();
 
-        return command switch
+            return command switch
         {
             "--version" or "-v" => ShowVersion(),
             "--help" or "-h" or "help" => ShowHelp(),
@@ -27,8 +27,9 @@ public class CommandHandler
             "build" => await HandleBuildAsync(args[1..]),
             "run" => HandleRun(),
             "test" => HandleTest(),
-            "install" => HandleInstall(),
-            "update" => HandleUpdate(),
+            "install" => await HandleInstallAsync(),
+            "update" => await HandleUpdateAsync(),
+            "lint" => await HandleLintAsync(),
             "publish" => HandlePublish(),
             _ => ShowUnknownCommand(command)
         };
@@ -259,7 +260,7 @@ For more information, visit: https://github.com/Fy-nite/Meow
     private int HandleRun()
     {
         Console.ForegroundColor = ConsoleColor.Yellow;
-        Console.WriteLine("Run command is not yet implemented (Phase 2)");
+        Console.WriteLine("Run command is not yet implemented");
         Console.ResetColor();
         Console.WriteLine("This will execute projects using the configured compiler's Run functionality");
         return 1;
@@ -268,33 +269,125 @@ For more information, visit: https://github.com/Fy-nite/Meow
     private int HandleTest()
     {
         Console.ForegroundColor = ConsoleColor.Yellow;
-        Console.WriteLine("Test command is not yet implemented (Phase 4)");
+        Console.WriteLine("Test command is not yet implemented");
         Console.ResetColor();
         return 1;
     }
 
-    private int HandleInstall()
+    private async Task<int> HandleInstallAsync()
     {
-        Console.ForegroundColor = ConsoleColor.Yellow;
-        Console.WriteLine("Install command is not yet implemented (Phase 3)");
-        Console.ResetColor();
-        Console.WriteLine("This will install dependencies from PurrNet");
-        return 1;
+        var configService = new ConfigService();
+        var purr = new Meow.Core.Services.PurrNetService(new System.Net.Http.HttpClient { BaseAddress = new Uri("https://purrnet.example/api/v1/") });
+        var installer = new InstallService(configService, purr);
+
+        var projectPath = Directory.GetCurrentDirectory();
+        Console.WriteLine("Installing dependencies from PurrNet...");
+        var ok = await installer.InstallAsync(projectPath);
+        if (ok)
+        {
+            Console.ForegroundColor = ConsoleColor.Green;
+            Console.WriteLine("✓ Install completed");
+            Console.ResetColor();
+            return 0;
+        }
+        else
+        {
+            Console.ForegroundColor = ConsoleColor.Red;
+            Console.WriteLine("✗ Install failed");
+            Console.ResetColor();
+            return 1;
+        }
     }
 
-    private int HandleUpdate()
+    private async Task<int> HandleUpdateAsync()
     {
-        Console.ForegroundColor = ConsoleColor.Yellow;
-        Console.WriteLine("Update command is not yet implemented (Phase 3)");
-        Console.ResetColor();
-        Console.WriteLine("This will update dependencies from PurrNet");
+        var configService = new ConfigService();
+        var purr = new Meow.Core.Services.PurrNetService(new System.Net.Http.HttpClient { BaseAddress = new Uri("https://purrnet.example/api/v1/") });
+        var installer = new InstallService(configService, purr);
+
+        var projectPath = Directory.GetCurrentDirectory();
+        Console.WriteLine("Updating dependencies from PurrNet...");
+        var ok = await installer.UpdateAsync(projectPath);
+        if (ok)
+        {
+            Console.ForegroundColor = ConsoleColor.Green;
+            Console.WriteLine("✓ Update completed");
+            Console.ResetColor();
+            return 0;
+        }
+        else
+        {
+            Console.ForegroundColor = ConsoleColor.Red;
+            Console.WriteLine("✗ Update failed");
+            Console.ResetColor();
+            return 1;
+        }
+    }
+
+    private async Task<int> HandleLintAsync()
+    {
+        var configService = new ConfigService();
+        var buildService = new BuildService(configService);
+
+        var projectPath = Directory.GetCurrentDirectory();
+        var configPath = Path.Combine(projectPath, "meow.yaml");
+        if (!configService.ConfigExists(configPath))
+        {
+            Console.ForegroundColor = ConsoleColor.Red;
+            Console.WriteLine("Error: No meow.yaml found in current directory.");
+            Console.ResetColor();
+            return 2;
+        }
+
+        var config = await configService.LoadConfigAsync(configPath);
+        var compiler = buildService.CreateCompiler(config.Build.Compiler);
+        if (compiler == null)
+        {
+            Console.ForegroundColor = ConsoleColor.Red;
+            Console.WriteLine($"Unknown compiler: {config.Build.Compiler}");
+            Console.ResetColor();
+            return 3;
+        }
+
+        var supported = new HashSet<string>(compiler.SupportedDependencyCategories.Select(s => s.ToLowerInvariant()));
+        var hasProblems = false;
+
+        foreach (var dep in config.Dependencies.Keys)
+        {
+            if (config.DependencyCategories != null && config.DependencyCategories.TryGetValue(dep, out var cat) && !string.IsNullOrWhiteSpace(cat))
+            {
+                if (!supported.Contains(cat.ToLowerInvariant()))
+                {
+                    Console.ForegroundColor = ConsoleColor.Yellow;
+                    Console.WriteLine($"[lint] Unsupported category: dependency '{dep}' categorized as '{cat}', but compiler '{compiler.Name}' supports: {string.Join(", ", supported)}");
+                    Console.ResetColor();
+                    hasProblems = true;
+                }
+            }
+            else
+            {
+                Console.ForegroundColor = ConsoleColor.Yellow;
+                Console.WriteLine($"[lint] Missing category: dependency '{dep}' has no category in 'dependencyCategories'.");
+                Console.ResetColor();
+                hasProblems = true;
+            }
+        }
+
+        if (!hasProblems)
+        {
+            Console.ForegroundColor = ConsoleColor.Green;
+            Console.WriteLine("✓ Lint passed — all dependencies match compiler categories");
+            Console.ResetColor();
+            return 0;
+        }
+
         return 1;
     }
 
     private int HandlePublish()
     {
         Console.ForegroundColor = ConsoleColor.Yellow;
-        Console.WriteLine("Publish command is not yet implemented (Phase 3)");
+        Console.WriteLine("Publish command is not yet implemented");
         Console.ResetColor();
         Console.WriteLine("This will publish packages to PurrNet");
         return 1;
