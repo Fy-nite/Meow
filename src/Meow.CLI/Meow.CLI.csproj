@@ -15,6 +15,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <AssemblyName>meow</AssemblyName>
+    <PackageId>meow</PackageId>
     <PackAsTool>true</PackAsTool>
     <ToolCommandName>meow</ToolCommandName>
     <Version>0.1.0</Version>
@@ -24,6 +25,11 @@
     <RepositoryUrl>https://github.com/Fy-nite/Meow</RepositoryUrl>
     <PackageLicenseExpression>AGPL-3.0-or-later</PackageLicenseExpression>
     <PackageReadmeFile>README.md</PackageReadmeFile>
+    <!-- Pack on build to produce a .nupkg in the repo for local install/testing -->
+    <PackOnBuild>true</PackOnBuild>
+    <PackageTags>meow;dotnet-tool;build;masm;fusion</PackageTags>
+    <!-- Output the nupkg to the repository root 'nupkgs' folder for convenience -->
+    <PackageOutputPath>$(SolutionDir)nupkgs</PackageOutputPath>
   </PropertyGroup>
 
   <ItemGroup>

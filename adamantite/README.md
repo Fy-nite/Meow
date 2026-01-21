@@ -1,0 +1,2 @@
+# adamantite
+Welcome to adamantite!

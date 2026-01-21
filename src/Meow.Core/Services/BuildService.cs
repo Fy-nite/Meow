@@ -295,13 +295,14 @@ public class BuildService : IBuildService
         if (string.IsNullOrWhiteSpace(compilerName))
             return new MasmCompiler();
 
-        return compilerName.ToLowerInvariant() switch
+            return compilerName.ToLowerInvariant() switch
         {
             "masm" => new MasmCompiler(),
             "sharpir" => new SharpIrCompiler(),
             "uhigh" => new UhighCompiler(),
             "objectfortran" => new ObjectFortranCompiler(),
             "objectivepascal" => new ObjectivePascalCompiler(),
+            "fusion" => new FusionCompiler(),
             // future compilers: "nasm" => new NasmCompiler(),
             _ => null
         };

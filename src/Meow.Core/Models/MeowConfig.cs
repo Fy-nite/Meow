@@ -1,3 +1,5 @@
+using System.Collections.Generic;
+
 namespace Meow.Core.Models;
 
 /// <summary>
@@ -106,4 +108,34 @@ public class BuildConfig
     /// Object file directory
     /// </summary>
     public string Objdir { get; set; } = "build/obj";
+
+    /// <summary>
+    /// Fusion-specific target language (passed to fut as `-l`)
+    /// </summary>
+    public string FutLanguage { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Name to pass to fut `-n` (namespace/package/name prefix). Defaults to project name when empty.
+    /// </summary>
+    public string FutName { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Conditional defines to pass to fut as `-D NAME`.
+    /// </summary>
+    public List<string> FutDefines { get; set; } = new();
+
+    /// <summary>
+    /// Include/resource search paths to pass to fut as `-I DIR`.
+    /// </summary>
+    public List<string> FutIncludes { get; set; } = new();
+
+    /// <summary>
+    /// Files to read but not emit (-r FILE.fu)
+    /// </summary>
+    public List<string> FutReadOnly { get; set; } = new();
+
+    /// <summary>
+    /// Extra arbitrary arguments to append to the fut invocation.
+    /// </summary>
+    public List<string> FutExtraArgs { get; set; } = new();
 }
