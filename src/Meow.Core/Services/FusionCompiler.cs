@@ -57,7 +57,7 @@ public class FusionCompiler : ICompiler
                         futArgs.Add(d);
                     }
                 }
-
+                
                 // include/resource dirs (-I)
                 if (buildConfig?.FutIncludes != null)
                 {
