@@ -1,0 +1,26 @@
+name: cpp
+version: 0.1.0
+description: A cpp cpp project
+authors:
+- GAMER
+type: cpp
+main: src/main.cpp
+build:
+  mode: debug
+  output: build
+  target: default
+  compiler: cpp
+  incremental: true
+  wildcard: false
+  link: true
+  objdir: build/obj
+  futLanguage: ''
+  futName: ''
+  futDefines: []
+  futIncludes: []
+  futReadOnly: []
+  futExtraArgs: []
+dependencies: {}
+dependencyCategories: {}
+devDependencies: {}
+scripts: {}

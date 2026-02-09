@@ -1,0 +1,26 @@
+name: fortran
+version: 0.1.0
+description: A fortran fortran project
+authors:
+- GAMER
+type: fortran
+main: src/main.f90
+build:
+  mode: debug
+  output: build
+  target: default
+  compiler: fortran
+  incremental: true
+  wildcard: false
+  link: true
+  objdir: build/obj
+  futLanguage: ''
+  futName: ''
+  futDefines: []
+  futIncludes: []
+  futReadOnly: []
+  futExtraArgs: []
+dependencies: {}
+dependencyCategories: {}
+devDependencies: {}
+scripts: {}

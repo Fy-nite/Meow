@@ -10,7 +10,7 @@ namespace Meow.Core.Services;
 public class ObjectFortranCompiler : ICompiler
 {
     public string Name => "objectfortran";
-    public IEnumerable<string> SourceExtensions => new[] { ".fobj" };
+    public IEnumerable<string> SourceExtensions => new[] { ".f90" };
     public IEnumerable<string> SupportedDependencyCategories => new[] { "fortran", "runtime" };
 
     public async Task<string?> AssembleAsync(string projectPath, string sourcePath, string objDir, BuildConfig buildConfig)
