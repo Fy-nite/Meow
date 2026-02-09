@@ -30,6 +30,16 @@
     <PackageTags>meow;dotnet-tool;build;masm;fusion</PackageTags>
     <!-- Output the nupkg to the repository root 'nupkgs' folder for convenience -->
     <PackageOutputPath>$(SolutionDir)nupkgs</PackageOutputPath>
+
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+
+      <PublishSingleFile>true</PublishSingleFile>
+      <SelfContained>true</SelfContained>
+      <RuntimeIdentifiers>win-x64;osx-x64;osx-arm64;linux-x64;linux-arm64</RuntimeIdentifiers>
+      <PublishTrimmed>false</PublishTrimmed>
+      <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
+      <IncludeAllContentForSelfExtract>true</IncludeAllContentForSelfExtract>
+
   </PropertyGroup>
 
   <ItemGroup>

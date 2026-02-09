@@ -3,7 +3,7 @@
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL%20v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
 [![.NET](https://img.shields.io/badge/.NET-9.0-purple.svg)](https://dotnet.microsoft.com/)
 
-**Meow** is a modern build orchestration tool for MicroAssembly (MASM) projects, designed to unify project management and streamline the developer experience. Built with C# and designed as both a CLI tool and a library, Meow integrates with the Rust MASM interpreter and PurrNet for dependency management.
+**Meow** is a modern build orchestration tool for MicroAssembly (MASM) projects, designed to unify project management and streamline the developer experience. Built with C# and designed as both a CLI tool and a library, Meow provides a flexible and extensible platform for building projects of any size and complexity.
 
 ```
   __  __                    

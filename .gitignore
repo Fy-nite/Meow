@@ -13,7 +13,7 @@ bld/
 [Oo]bj/
 [Ll]og/
 [Ll]ogs/
-
+publish/
 # Visual Studio cache/options
 .vs/
 .vscode/
@@ -53,3 +53,8 @@ artifacts/
 # Temporary files
 *.tmp
 *~
+linux-arm64.zip
+win-x64.zip
+osx-x64.zip
+osx-arm64.zip
+linux-x64.zip
