@@ -97,7 +97,7 @@ Get-ChildItem -Path $projectsRoot -Directory | ForEach-Object {
     }
 }
 
-Write-Host "\n=== Summary ==="
+Write-Host "`n === Summary ==="
 $failures = @($results | Where-Object { $_.ExitCode -ne 0 })
 foreach ($r in $results) {
     $status = if ($r.ExitCode -eq 0) { 'OK' } else { 'FAIL' }
