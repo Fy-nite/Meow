@@ -19,7 +19,16 @@ public class CCompiler : ICompiler
         try
         {
             var fullSourcePath = Path.Combine(projectPath, sourcePath);
-            var relativePath = sourcePath.Replace("src/", "").Replace("src\\", "");
+            var relativePath = sourcePath;
+            // Support sources coming from either src/ or tests/ when building test programs
+            if (relativePath.StartsWith("src/", StringComparison.OrdinalIgnoreCase) || relativePath.StartsWith("src\\", StringComparison.OrdinalIgnoreCase))
+            {
+                relativePath = relativePath.Substring(4);
+            }
+            else if (relativePath.StartsWith("tests/", StringComparison.OrdinalIgnoreCase) || relativePath.StartsWith("tests\\", StringComparison.OrdinalIgnoreCase))
+            {
+                relativePath = relativePath.Substring(6);
+            }
             var objectFileName = relativePath
                 .Replace(Path.DirectorySeparatorChar, '_')
                 .Replace(Path.AltDirectorySeparatorChar, '_')

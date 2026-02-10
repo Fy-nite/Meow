@@ -80,7 +80,7 @@ public class BuildService : IBuildService
     
 
     /// <inheritdoc />
-    public async Task<bool> BuildProjectAsync(string projectPath, bool clean = false)
+    public async Task<bool> BuildProjectAsync(string projectPath, bool clean = false, string? testMainRelative = null)
     {
         try
         {
@@ -157,8 +157,9 @@ public class BuildService : IBuildService
                 // Runner-based projects currently do not declare dependency categories in the same way; skip category checks.
             }
 
-            // Get source files using the selected compiler
-            var sourceFiles = GetSourceFiles(projectPath, config, compiler, runner);
+            // Get source files using the selected compiler. If testMainRelative is provided,
+            // adjust selection to include the test entry and exclude the normal main when wildcarding.
+            var sourceFiles = GetSourceFiles(projectPath, config, compiler, runner, testMainRelative);
 
             if (sourceFiles.Count == 0)
             {
@@ -241,6 +242,11 @@ public class BuildService : IBuildService
 
     private List<string> GetSourceFiles(string projectPath, MeowConfig config, ICompiler? compiler, IRunner? runner)
     {
+        return GetSourceFiles(projectPath, config, compiler, runner, null);
+    }
+
+    private List<string> GetSourceFiles(string projectPath, MeowConfig config, ICompiler? compiler, IRunner? runner, string? testMainRelative)
+    {
         var sourceFiles = new List<string>();
         var srcDir = Path.Combine(projectPath, "src");
 
@@ -249,6 +255,7 @@ public class BuildService : IBuildService
             Console.WriteLine($"Source directory not found: {srcDir}");
             return sourceFiles;
         }
+
 
         IEnumerable<string> extensions;
         if (compiler != null)
@@ -262,6 +269,41 @@ public class BuildService : IBuildService
         else
         {
             extensions = new[] { ".masm" };
+        }
+
+        // If a test entrypoint was provided, include it and if wildcarding, exclude the normal main file.
+        if (!string.IsNullOrEmpty(testMainRelative))
+        {
+            var testFull = Path.Combine(projectPath, testMainRelative);
+            if (File.Exists(testFull))
+            {
+                sourceFiles.Add(testMainRelative.Replace("\\", "/"));
+            }
+
+            if (config.Build.Wildcard)
+            {
+                // gather src files but exclude configured Main (so test can link against other sources)
+                foreach (var ext in extensions)
+                {
+                    var pattern = "*" + ext;
+                    var files = Directory.GetFiles(srcDir, pattern, SearchOption.AllDirectories);
+                    foreach (var file in files)
+                    {
+                        var rel = Path.GetRelativePath(projectPath, file).Replace("\\", "/");
+                        // skip the project's main entrypoint so tests don't compile the main program
+                        if (!string.Equals(rel, config.Main.Replace("\\", "/"), StringComparison.OrdinalIgnoreCase))
+                        {
+                            sourceFiles.Add(rel);
+                        }
+                    }
+                }
+            }
+            else
+            {
+                // not wildcarding: only test entry is used (we've already added it)
+            }
+
+            return sourceFiles;
         }
 
         if (config.Build.Wildcard)

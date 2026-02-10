@@ -40,7 +40,7 @@ public class CommandHandler
             "init" => await HandleInitAsync(args[1..]),
             "build" => await HandleBuildAsync(args[1..]),
             "run" => HandleRun(),
-            "test" => HandleTest(),
+            "test" => await HandleTestAsync(),
             "install" => await HandleInstallAsync(),
             "add" => await HandleAddAsync(args[1..]),
             "update" => await HandleUpdateAsync(),
@@ -325,12 +325,47 @@ For more information, visit: https://github.com/Fy-nite/Meow
         return 1;
     }
 
-    private int HandleTest()
+    private async Task<int> HandleTestAsync()
     {
-        Console.ForegroundColor = ConsoleColor.Yellow;
-        Console.WriteLine("Test command is not yet implemented");
-        Console.ResetColor();
-        return 1;
+        var projectPath = Directory.GetCurrentDirectory();
+        var configPath = Path.Combine(projectPath, "meow.yaml");
+
+        if (!_configService.ConfigExists(configPath))
+        {
+            Console.ForegroundColor = ConsoleColor.Red;
+            Console.WriteLine("Error: No meow.yaml found in current directory.");
+            Console.ResetColor();
+            return 2;
+        }
+
+        var testMainRel = Path.Combine("tests", "test_main.c");
+        var testMainFull = Path.Combine(projectPath, testMainRel);
+
+        if (!File.Exists(testMainFull))
+        {
+            Console.ForegroundColor = ConsoleColor.Yellow;
+            Console.WriteLine($"No test entry point found at {testMainRel}. Create tests/test_main.c to run tests.");
+            Console.ResetColor();
+            return 1;
+        }
+
+        // Build using a test entrypoint; BuildService will include test entry and (if wildcard) exclude normal main
+        Console.WriteLine("Building test program using tests/test_main.c...");
+        var success = await _buildService.BuildProjectAsync(projectPath, clean: false, testMainRel.Replace("\\", "/"));
+        if (success)
+        {
+            Console.ForegroundColor = ConsoleColor.Green;
+            Console.WriteLine("✓ Test build completed successfully!");
+            Console.ResetColor();
+            return 0;
+        }
+        else
+        {
+            Console.ForegroundColor = ConsoleColor.Red;
+            Console.WriteLine("✗ Test build failed.");
+            Console.ResetColor();
+            return 3;
+        }
     }
 
     private async Task<int> HandleInstallAsync()

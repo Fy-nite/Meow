@@ -11,7 +11,7 @@ build:
   target: default
   compiler: c
   incremental: true
-  wildcard: false
+  wildcard: true
   link: true
   objdir: build/obj
   futLanguage: ''
