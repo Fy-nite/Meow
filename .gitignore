@@ -17,7 +17,7 @@ publish/
 # Visual Studio cache/options
 .vs/
 .vscode/
-
+othercompilers
 # User-specific files
 *.rsuser
 *.suo

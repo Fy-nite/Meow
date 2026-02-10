@@ -1,4 +1,5 @@
 using Meow.Core.Models;
+using Meow.Core.Compilers;
 using System.Linq;
 
 namespace Meow.Core.Services;
@@ -24,12 +25,19 @@ public class BuildService : IBuildService
         try
         {
             var compiler = CreateCompiler(compilerName);
-            if (compiler == null)
+            if (compiler != null)
             {
-                Console.WriteLine($"Unknown compiler: {compilerName}");
-                return false;
+                return await compiler.DebugAsync(executable, stdinFile);
             }
-            return await compiler.DebugAsync(executable, stdinFile);
+
+            var runner = CreateRunner(compilerName);
+            if (runner != null)
+            {
+                return await runner.DebugAsync(executable, stdinFile);
+            }
+
+            Console.WriteLine($"Unknown compiler/runner: {compilerName}");
+            return false;
         }
         catch (Exception ex)
         {
@@ -46,12 +54,19 @@ public class BuildService : IBuildService
         try
         {
             var compiler = CreateCompiler(compilerName);
-            if (compiler == null)
+            if (compiler != null)
             {
-                Console.WriteLine($"Unknown compiler: {compilerName}");
-                return false;
+                return await compiler.RunAsync(executable, stdinFile);
             }
-            return await compiler.RunAsync(executable, stdinFile);
+
+            var runner = CreateRunner(compilerName);
+            if (runner != null)
+            {
+                return await runner.RunAsync(executable, stdinFile);
+            }
+
+            Console.WriteLine($"Unknown compiler/runner: {compilerName}");
+            return false;
         }
         catch (Exception ex)
         {
@@ -87,52 +102,60 @@ public class BuildService : IBuildService
             Directory.CreateDirectory(buildDir);
             Directory.CreateDirectory(objDir);
 
-            // Create compiler based on config
+            // Create compiler or runner based on config
             var compiler = CreateCompiler(config.Build.Compiler);
-            if (compiler == null)
+            var runner = compiler == null ? CreateRunner(config.Build.Compiler) : null;
+            if (compiler == null && runner == null)
             {
-                Console.WriteLine($"Unknown compiler: {config.Build.Compiler}");
+                Console.WriteLine($"Unknown compiler/runner: {config.Build.Compiler}");
                 return false;
             }
 
             // Check dependency categories against compiler supported categories and warn if unsupported
-            var supportedCats = new HashSet<string>(compiler.SupportedDependencyCategories.Select(s => s.ToLowerInvariant()));
-
-            foreach (var dep in config.Dependencies.Keys)
+            if (compiler != null)
             {
-                if (config.DependencyCategories != null && config.DependencyCategories.TryGetValue(dep, out var cat) && !string.IsNullOrWhiteSpace(cat))
+                var supportedCats = new HashSet<string>(compiler.SupportedDependencyCategories.Select(s => s.ToLowerInvariant()));
+
+                foreach (var dep in config.Dependencies.Keys)
                 {
-                    var catLower = cat.ToLowerInvariant();
-                    if (!supportedCats.Contains(catLower))
+                    if (config.DependencyCategories != null && config.DependencyCategories.TryGetValue(dep, out var cat) && !string.IsNullOrWhiteSpace(cat))
                     {
-                        Console.WriteLine($"Warning: compiler '{compiler.Name}' does not declare support for dependency category '{cat}' required by '{dep}'.");
+                        var catLower = cat.ToLowerInvariant();
+                        if (!supportedCats.Contains(catLower))
+                        {
+                            Console.WriteLine($"Warning: compiler '{compiler.Name}' does not declare support for dependency category '{cat}' required by '{dep}'.");
+                        }
+                    }
+                    else
+                    {
+                        Console.WriteLine($"Warning: dependency '{dep}' has no category specified in 'DependencyCategories'.");
                     }
                 }
-                else
+
+                // DevDependencies - warn but indicate dev-only
+                foreach (var dep in config.DevDependencies.Keys)
                 {
-                    Console.WriteLine($"Warning: dependency '{dep}' has no category specified in 'DependencyCategories'.");
+                    if (config.DependencyCategories != null && config.DependencyCategories.TryGetValue(dep, out var cat) && !string.IsNullOrWhiteSpace(cat))
+                    {
+                        var catLower = cat.ToLowerInvariant();
+                        if (!supportedCats.Contains(catLower))
+                        {
+                            Console.WriteLine($"Warning: compiler '{compiler.Name}' does not declare support for dev dependency category '{cat}' required by '{dep}' (dev dependency). This may be okay for build-only compilers.");
+                        }
+                    }
+                    else
+                    {
+                        Console.WriteLine($"Warning: dev dependency '{dep}' has no category specified in 'DependencyCategories'.");
+                    }
                 }
             }
-
-            // DevDependencies - warn but indicate dev-only
-            foreach (var dep in config.DevDependencies.Keys)
+            else
             {
-                if (config.DependencyCategories != null && config.DependencyCategories.TryGetValue(dep, out var cat) && !string.IsNullOrWhiteSpace(cat))
-                {
-                    var catLower = cat.ToLowerInvariant();
-                    if (!supportedCats.Contains(catLower))
-                    {
-                        Console.WriteLine($"Warning: compiler '{compiler.Name}' does not declare support for dev dependency category '{cat}' required by '{dep}' (dev dependency). This may be okay for build-only compilers.");
-                    }
-                }
-                else
-                {
-                    Console.WriteLine($"Warning: dev dependency '{dep}' has no category specified in 'DependencyCategories'.");
-                }
+                // Runner-based projects currently do not declare dependency categories in the same way; skip category checks.
             }
 
             // Get source files using the selected compiler
-            var sourceFiles = GetSourceFiles(projectPath, config);
+            var sourceFiles = GetSourceFiles(projectPath, config, compiler, runner);
 
             if (sourceFiles.Count == 0)
             {
@@ -146,11 +169,25 @@ public class BuildService : IBuildService
                 Console.WriteLine($"  - {file}");
             }
 
+            // If this is a runner-based project, we do not assemble/link; simply validate main/source presence
+            if (runner != null)
+            {
+                Console.WriteLine($"Runner-based project using '{runner.Name}'. Found {sourceFiles.Count} source file(s).");
+                foreach (var file in sourceFiles)
+                {
+                    Console.WriteLine($"  - {file}");
+                }
+
+                // For now, building an interpreted project is a no-op beyond validation.
+                // Future: support packaging, dependency install, or bytecode caching.
+                return true;
+            }
+
             // Assemble each source file to object file using the selected compiler
             var objectFiles = new List<string>();
             foreach (var sourceFile in sourceFiles)
             {
-                var objFile = await compiler.AssembleAsync(projectPath, sourceFile, objDir, config.Build);
+                var objFile = await compiler!.AssembleAsync(projectPath, sourceFile, objDir, config.Build);
                 if (objFile != null)
                 {
                     objectFiles.Add(objFile);
@@ -171,7 +208,7 @@ public class BuildService : IBuildService
             // Link if enabled
             if (config.Build.Link && objectFiles.Count > 0)
             {
-                var outputExt = compiler.Name == "masm" ? ".masi" : "";
+                var outputExt = compiler!.Name == "masm" ? ".masi" : "";
                 var outputFile = Path.Combine(projectPath, config.Build.Output,
                     $"{config.Name}{outputExt}");
 
@@ -199,9 +236,8 @@ public class BuildService : IBuildService
         }
     }
 
-    private List<string> GetSourceFiles(string projectPath, MeowConfig config)
+    private List<string> GetSourceFiles(string projectPath, MeowConfig config, ICompiler? compiler, IRunner? runner)
     {
-        var compiler = CreateCompiler(config.Build.Compiler) ?? new MasmCompiler();
         var sourceFiles = new List<string>();
         var srcDir = Path.Combine(projectPath, "src");
 
@@ -211,10 +247,24 @@ public class BuildService : IBuildService
             return sourceFiles;
         }
 
+        IEnumerable<string> extensions;
+        if (compiler != null)
+        {
+            extensions = compiler.SourceExtensions;
+        }
+        else if (runner != null)
+        {
+            extensions = runner.SourceExtensions;
+        }
+        else
+        {
+            extensions = new[] { ".masm" };
+        }
+
         if (config.Build.Wildcard)
         {
             // Get all matching files recursively for supported extensions
-            foreach (var ext in compiler.SourceExtensions)
+            foreach (var ext in extensions)
             {
                 var pattern = "*" + ext;
                 var files = Directory.GetFiles(srcDir, pattern, SearchOption.AllDirectories);
@@ -304,9 +354,26 @@ public class BuildService : IBuildService
             "c" => new CCompiler(),
             "cpp" => new CppCompiler(),
             "fortran" => new FortranCompiler(),
+            "go" => new GoCompiler(),
+            "rust" => new RustCompiler(),
+            "csharp" => new CSharpCompiler(),
             "objectivepascal" => new ObjectivePascalCompiler(),
             "fusion" => new FusionCompiler(),
             // future compilers: "nasm" => new NasmCompiler(),
+            _ => null
+        };
+    }
+
+    public IRunner? CreateRunner(string runnerName)
+    {
+        if (string.IsNullOrWhiteSpace(runnerName))
+            return null;
+
+        return runnerName.ToLowerInvariant() switch
+        {
+            "python" => new Meow.Core.Compilers.PythonRunner(),
+            "node" => new Meow.Core.Compilers.NodeRunner(),
+            // future runners: "node" => new NodeRunner(),
             _ => null
         };
     }
