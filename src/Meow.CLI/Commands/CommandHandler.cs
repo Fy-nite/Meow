@@ -173,6 +173,23 @@ For more information, visit: https://github.com/Fy-nite/Meow
 
         if (success)
         {
+            // Create language-specific main template if the selected compiler/runner supports it
+            try
+            {
+                var configPathAfter = Path.Combine(projectPath, "meow.yaml");
+                if (_configService.ConfigExists(configPathAfter))
+                {
+                    var cfg = await _configService.LoadConfigAsync(configPathAfter);
+                    var mainRel = cfg.Main ?? Path.Combine("src", "main");
+                    // Ask BuildService to create a proper main template for the configured compiler
+                    await _buildService.CreateMainTemplateAsync(projectPath, cfg.Build.Compiler ?? compiler, mainRel);
+                }
+            }
+            catch
+            {
+                // ignore template generation errors during init
+            }
+
             Console.ForegroundColor = ConsoleColor.Green;
             Console.WriteLine($"✓ Project '{projectName}' initialized successfully!");
             Console.ResetColor();

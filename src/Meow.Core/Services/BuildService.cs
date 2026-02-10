@@ -11,6 +11,9 @@ public class BuildService : IBuildService
 {
     private readonly IConfigService _configService;
     
+    /// <summary>
+    /// Create a new BuildService using the provided config service.
+    /// </summary>
     public BuildService(IConfigService configService)
     {
         _configService = configService;
@@ -340,6 +343,9 @@ public class BuildService : IBuildService
         }
     }
 
+    /// <summary>
+    /// Instantiate a compiler implementation by name.
+    /// </summary>
     public ICompiler? CreateCompiler(string compilerName)
     {
         if (string.IsNullOrWhiteSpace(compilerName))
@@ -364,6 +370,9 @@ public class BuildService : IBuildService
         };
     }
 
+    /// <summary>
+    /// Instantiate a runner implementation by name.
+    /// </summary>
     public IRunner? CreateRunner(string runnerName)
     {
         if (string.IsNullOrWhiteSpace(runnerName))
@@ -376,5 +385,43 @@ public class BuildService : IBuildService
             // future runners: "node" => new NodeRunner(),
             _ => null
         };
+    }
+
+    /// <summary>
+    /// Create a language-specific main template file for a project using the named compiler/runner.
+    /// </summary>
+    public async Task<bool> CreateMainTemplateAsync(string projectPath, string compilerOrRunnerName, string? mainRelativePath = null)
+    {
+        try
+        {
+            var configPath = Path.Combine(projectPath, "meow.yaml");
+            MeowConfig? config = null;
+            if (_configService.ConfigExists(configPath))
+                config = await _configService.LoadConfigAsync(configPath);
+
+            var mainPath = mainRelativePath ?? config?.Main ?? Path.Combine("src", "main");
+
+            // Create compiler or runner
+            var compiler = CreateCompiler(compilerOrRunnerName);
+            var runner = compiler == null ? CreateRunner(compilerOrRunnerName) : null;
+
+            // Prefer template provider on compiler, then runner
+            if (compiler is ITemplateProvider cp)
+            {
+                return await cp.CreateMainAsync(projectPath, mainPath);
+            }
+            if (runner is ITemplateProvider rp)
+            {
+                return await rp.CreateMainAsync(projectPath, mainPath);
+            }
+
+            Console.WriteLine($"Compiler/runner '{compilerOrRunnerName}' does not support main-template generation.");
+            return false;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Failed to create main template: {ex.Message}");
+            return false;
+        }
     }
 }

@@ -1,0 +1,39 @@
+====== Template Provider Guide (ITemplateProvider) ======
+
+Meow provides `ITemplateProvider` to allow compilers/runners to generate idiomatic starter "main" files when users run `meow init`.
+
+===== Interface =====
+Implement `ITemplateProvider` in your compiler/runner class:
+<code>
+public interface ITemplateProvider
+{
+  Task<bool> CreateMainAsync(string projectPath, string mainRelativePath);
+}
+</code>
+
+===== Expectations =====
+  * `projectPath` is the repository root (absolute path).
+  * `mainRelativePath` is the relative path to write (e.g., `src/main.py` or `src/Main.java`).
+  * Implementations should create parent directories if needed.
+  * Return `true` on success; return `false` or throw to indicate failure.
+
+===== Best practices =====
+  * Write an idiomatic, minimal "Hello World" that demonstrates how to run or build the project.
+  * Prefer not to overwrite existing user files silently; consider checking for file existence and returning false unless a `--force` flag is provided (future feature).
+  * Log a short message to stdout when template is created.
+
+===== Example (Python) =====
+<code>
+public Task<bool> CreateMainAsync(string projectPath, string mainRelativePath)
+{
+  var full = Path.Combine(projectPath, mainRelativePath);
+  Directory.CreateDirectory(Path.GetDirectoryName(full));
+  File.WriteAllText(full, "#!/usr/bin/env python3\n\nprint('Hello, world!')\n");
+  return Task.FromResult(true);
+}
+</code>
+
+===== Wiring into `meow init` =====n
+`CommandHandler.HandleInitAsync` will call `BuildService.CreateMainTemplateAsync(...)` after scaffolding. That method instantiates the chosen compiler/runner and, if it implements `ITemplateProvider`, calls `CreateMainAsync`.
+
+----

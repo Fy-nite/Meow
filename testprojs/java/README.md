@@ -1,0 +1,28 @@
+# java
+
+A java project created with Meow.
+
+## Getting Started
+
+### Build
+meow build
+
+### Run
+meow run
+
+### Test
+meow test
+
+## About JAVA
+
+This project was scaffolded for the java toolchain. Replace this text with language-specific notes as needed.
+
+## Dependencies
+
+Dependencies are managed through PurrNet. Add them in meow.yaml:
+
+dependencies:
+  example-lib: "^1.0.0"
+
+Then run:
+meow install

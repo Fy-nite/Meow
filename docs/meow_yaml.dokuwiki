@@ -1,0 +1,107 @@
+====== meow.yaml — Project configuration ======
+
+This page documents the `meow.yaml` configuration file used by Meow to describe a project, its build settings, and dependencies.
+
+====== Overview ======
+`meow.yaml` contains the project's metadata and build configuration. The runtime reads this file when running `meow build`, `meow run`, `meow init`, and related commands.
+
+====== Example ======
+<code>
+name: example-project
+version: "0.1.0"
+description: "An example project"
+authors:
+  - "Your Name"
+
+type: "java"
+main: "src/main.java"
+
+build:
+  mode: "debug"
+  output: "build"
+  target: "default"
+  compiler: "java"
+  incremental: true
+  wildcard: true
+  link: true
+  objdir: "build/obj"
+
+dependencies:
+  example-lib: "^1.0.0"
+
+dependencyCategories:
+  example-lib: "runtime"
+
+devDependencies: {}
+
+scripts: {}
+</code>
+
+====== Top-level fields ======
+  * **name**: Project name (string).
+  * **version**: Project version (string).
+  * **description**: Short description (string).
+  * **authors**: List of author names.
+  * **type**: Short project type (informational).
+  * **main**: Relative path to the project's main entry (e.g., `src/main.c`, `src/main.py`).
+
+====== Build configuration (`build`) ======
+  * **mode**: `debug` or `release` (affects compiler flags).
+  * **output**: Output directory for final artifacts (default `build`).
+  * **target**: Platform/target triple or named target.
+  * **compiler**: Name of the compiler or runner to use (e.g., `c`, `cpp`, `go`, `rust`, `java`, `python`, `node`, `masm`).
+  * **incremental**: `true`/`false` whether to enable incremental builds.
+  * **wildcard**: If `true`, Meow will scan `src/` recursively and include all files matching the compiler/runner's `SourceExtensions`.
+  * **link**: `true`/`false` whether to link object files into a single output (ignored for runner/interpreted projects).
+  * **objdir**: Directory to place intermediate object (or compiled class) outputs.
+
+Fusion-specific fields (used when `compiler: fusion`):
+  * **futLanguage**, **futName**, **futDefines**, **futIncludes**, **futReadOnly**, **futExtraArgs** — passed to the `fut` tool.
+
+====== Dependencies ======
+  * **dependencies**: Map of package name → version spec. These are resolved via PurrNet.
+  * **dependencyCategories**: Optional map of package name → category (e.g., `runtime`, `native`, `java`, `nuget`, `sharpir`). Compilers declare supported categories and Meow warns if a dependency category is unsupported.
+  * **devDependencies**: Like `dependencies` but for development-only packages.
+
+====== Scripts ======
+  * **scripts**: Map of custom script names to shell commands. Meow may execute these for custom tasks (not a full script runner like npm/yarn).
+
+====== Compiler vs Runner ======
+Meow supports two concepts:
+  * **Compiler** (`ICompiler`): converts source files to object files and links them (C, C++, Go, Rust, C#, MASM, etc.).
+  * **Runner** (`IRunner`): interpreted/script languages that are executed directly (Python, Node/JavaScript, etc.).
+
+Set `build.compiler` to the language name; BuildService will instantiate either a compiler or a runner. Examples:
+  * `compiler: python` — Meow will treat project as a Python runner project and will not link object files.
+  * `compiler: java` — Meow will use `javac` and place class files under `objdir`.
+
+====== `meow init` behavior ======
+When you run `meow init <name> <compiler>`, Meow will scaffold `meow.yaml`, `src/`, `tests/`, `build/`, and attempt to generate a language-appropriate main template in `src/` using the configured compiler/runner's template provider. If the compiler/runner does not implement a template provider, a generic main file created by the `ProjectService` is used.
+
+====== Common compiler names ======
+  * `masm`, `c`, `cpp`, `fortran`, `objectfortran`, `objectivepascal`, `sharpir`, `uhigh`, `fusion` — existing compilers in Meow.
+  * `go`, `rust`, `csharp` — compilers supported by the project (call `go build`, `cargo`, `dotnet build`/`csc`).
+  * `java` — uses `javac` to compile Java sources; set `main` to e.g. `src/Main.java`.
+  * `python`, `node` — runners that execute scripts rather than building objects.
+
+====== Examples ======
+  * Java example (already shown above): set `compiler: java` and `main: src/Main.java`.
+  * Python example:
+<code>
+name: my-python-app
+build:
+  compiler: python
+main: src/main.py
+</code>
+  * Node example:
+<code>
+name: my-node-app
+build:
+  compiler: node
+main: src/index.js
+</code>
+
+====== Notes and tips ======
+  * Use `build.wildcard: true` to include all matching sources under `src/` automatically.
+  * For interpreted projects, Meow's `build` step validates files and folders; `meow run` uses the runner's `RunAsync` implementation.
+  * If you need to run dependency bootstrap steps (e.g., `pip install -r requirements.txt`, `npm install`), consider adding them to `scripts` or extend the runner implementation.

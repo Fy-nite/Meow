@@ -1,0 +1,29 @@
+====== `meow init` — Project Initialization ======
+
+This page explains how `meow init` scaffolds new projects and the meaning of its arguments.
+
+===== Basic usage =====
+  `meow init [name] [compiler]`
+
+  * If `name` is omitted Meow uses the current directory name and creates files in-place.
+  * If `compiler` is omitted the default is `masm`.
+
+===== What is created =====
+  * `meow.yaml` — project configuration.
+  * `src/` — source directory. A main file is created (language-specific if supported).
+  * `tests/` — test directory.
+  * `build/` — output folder.
+  * `README.md`, `.gitignore`.
+
+===== Language templates =====
+After scaffolding `meow init` will attempt to generate a proper language-specific main file by invoking the project's template provider via `BuildService.CreateMainTemplateAsync`. This yields nicer, idiomatic starter files (e.g., `src/main.py`, `src/Main.java`) when compilers/runners implement `ITemplateProvider`.
+
+===== Overwrite behavior =====
+  * Current behavior: the default `ProjectService` writes a basic main file; the `BuildService` template provider is called afterwards and will write a nicer main file if available. Existing files are not overwritten silently.
+  * Future: a `--force` argument may be added to overwrite existing main files.
+
+===== Examples =====
+  * `meow init my-project go` — creates a Go project and generates `src/main.go`.
+  * `meow init` — initialize in current directory (defaults to `masm`).
+
+----

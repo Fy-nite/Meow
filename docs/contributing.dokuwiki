@@ -1,0 +1,30 @@
+====== Contributing to Meow ======
+
+Thank you for wanting to contribute! This guide covers common contribution types: adding compilers/runners, tests, and docs.
+
+===== Workflow =====
+  1. Fork the repository and create a feature branch.
+  2. Implement your change in `src/Meow.Core` or `src/Meow.CLI`.
+  3. Add unit tests where appropriate (language-specific behavior).
+  4. Add Dokuwiki docs in `docs/` describing the feature or toolchain.
+  5. Submit a pull request with a clear description and usage examples.
+
+===== Adding a compiler or runner =====
+  * Compiler: implement `ICompiler` in `src/Meow.Core/Compilers` and register it in `BuildService.CreateCompiler`.
+  * Runner: implement `IRunner` and register it in `BuildService.CreateRunner`.
+  * Optionally implement `ITemplateProvider` to provide `meow init` templates.
+  * Document external toolchain dependencies (e.g., `go`, `cargo`, `dotnet`, `javac`) and recommended installation steps in `docs/`.
+
+===== Tests =====
+  * Add small test projects under `testprojs/` demonstrating build/run for your compiler/runner.
+  * Tests should be small and fast; avoid shipping large dependencies.
+
+===== Documentation =====
+  * Add Dokuwiki pages to `docs/` for new compilers, runners, or features.
+  * Update `docs/meow_yaml.dokuwiki` if new config options are added.
+
+===== CI and formatting =====
+  * Keep changes focused and well-documented.
+  * Run the project build locally before submitting PRs.
+
+----

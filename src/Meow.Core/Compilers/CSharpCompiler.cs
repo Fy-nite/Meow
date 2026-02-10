@@ -138,4 +138,24 @@ public class CSharpCompiler : ICompiler
         Console.WriteLine("C# debug not implemented; use `dotnet run` or VS Code debugger.");
         return Task.FromResult(false);
     }
+
+    // Template provider: create a basic C# Program.cs
+    public Task<bool> CreateMainAsync(string projectPath, string mainRelativePath)
+    {
+        try
+        {
+            var fullPath = Path.Combine(projectPath, mainRelativePath);
+            var dir = Path.GetDirectoryName(fullPath) ?? Path.Combine(projectPath, "src");
+            Directory.CreateDirectory(dir);
+            var content = "using System;\n\nclass Program {\n    static void Main(string[] args) {\n        Console.WriteLine(\"Hello, world!\");\n    }\n}\n";
+            File.WriteAllText(fullPath, content);
+            Console.WriteLine($"Created C# main template: {mainRelativePath}");
+            return Task.FromResult(true);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Failed to create C# main template: {ex.Message}");
+            return Task.FromResult(false);
+        }
+    }
 }

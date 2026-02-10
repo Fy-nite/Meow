@@ -110,4 +110,24 @@ public class PythonRunner : IRunner
             return false;
         }
     }
+
+    // Template provider support for Python
+    public Task<bool> CreateMainAsync(string projectPath, string mainRelativePath)
+    {
+        try
+        {
+            var fullPath = Path.Combine(projectPath, mainRelativePath);
+            var dir = Path.GetDirectoryName(fullPath) ?? Path.Combine(projectPath, "src");
+            Directory.CreateDirectory(dir);
+            var content = "#!/usr/bin/env python3\n\nprint(\"Hello, world!\")\n";
+            File.WriteAllText(fullPath, content);
+            Console.WriteLine($"Created Python main template: {mainRelativePath}");
+            return Task.FromResult(true);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Failed to create Python main template: {ex.Message}");
+            return Task.FromResult(false);
+        }
+    }
 }

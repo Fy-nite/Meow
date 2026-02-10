@@ -8,11 +8,29 @@ using Meow.Core.Models;
 
 namespace Meow.Core.Services;
 
+/// <summary>
+/// Compiler implementation for Java source files using javac.
+/// </summary>
 public class JavaCompiler : ICompiler
 {
+    /// <summary>
+    /// Name of the compiler implementation.
+    /// </summary>
     public string Name => "java";
+
+    /// <summary>
+    /// Supported source file extensions.
+    /// </summary>
     public IEnumerable<string> SourceExtensions => new[] { ".java" };
+
+    /// <summary>
+    /// Dependency categories supported by this compiler.
+    /// </summary>
     public IEnumerable<string> SupportedDependencyCategories => new[] { "java", "runtime" };
+    /// <summary>
+    /// Compile a Java source file into class files placed under the obj directory.
+    /// Returns a representative object path on success, or null on failure.
+    /// </summary>
     public async Task<string?> AssembleAsync(string projectPath, string sourcePath, string objDir, BuildConfig buildConfig)
     {
         try
@@ -56,6 +74,9 @@ public class JavaCompiler : ICompiler
             return null;
         }
     }
+    /// <summary>
+    /// For Java this method performs a packaging/copy step into the output directory.
+    /// </summary>
     public async Task<bool> LinkAsync(IEnumerable<string> objectFiles, string outputFile, BuildConfig buildConfig)
     {
         try
@@ -92,6 +113,9 @@ public class JavaCompiler : ICompiler
         }
     }
 
+    /// <summary>
+    /// Run a Java class or jar. `executable` is expected to be the path to the class directory or jar.
+    /// </summary>
     public Task<bool> RunAsync(string executable, string? stdinFile = null)
     {
         try
@@ -131,6 +155,9 @@ public class JavaCompiler : ICompiler
         }
     }
 
+    /// <summary>
+    /// Launch the Java Debugger (jdb) against the provided class directory or jar.
+    /// </summary>
     public Task<bool> DebugAsync(string executable, string? stdinFile = null)
     {
         try
@@ -155,5 +182,30 @@ public class JavaCompiler : ICompiler
     {
         var timestamp = DateTime.UtcNow.ToString("o");
         return $"// {header}\n// Source: {sourceFile}\n// Assembled: {timestamp}\n\n{sourceContent}\n";
+    }
+
+    // Template provider: create a default Main.java in src/ if requested
+    /// <summary>
+    /// Create a simple `main` Java source file at the requested relative path.
+    /// </summary>
+    public Task<bool> CreateMainAsync(string projectPath, string mainRelativePath)
+    {
+        try
+        {
+            var fullPath = Path.Combine(projectPath, mainRelativePath);
+            var dir = Path.GetDirectoryName(fullPath) ?? Path.Combine(projectPath, "src");
+            Directory.CreateDirectory(dir);
+            var className = Path.GetFileNameWithoutExtension(fullPath);
+            if (string.IsNullOrWhiteSpace(className)) className = "Main";
+            var content = $"public class {className} {{\n    public static void main(String[] args) {{\n        System.out.println(\"Hello, world!\");\n    }}\n}}\n";
+            File.WriteAllText(fullPath, content);
+            Console.WriteLine($"Created Java main template: {mainRelativePath}");
+            return Task.FromResult(true);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Failed to create Java main template: {ex.Message}");
+            return Task.FromResult(false);
+        }
     }
 }

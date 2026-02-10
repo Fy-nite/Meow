@@ -1,0 +1,38 @@
+====== Meow CLI — Command Reference ======
+
+This page documents the primary Meow CLI commands and options.
+
+===== Usage =====
+  meow [COMMAND] [OPTIONS]
+
+===== Commands =====
+  * **init** — Initialize a new project (scaffolds files and meow.yaml).
+    - Usage: `meow init [name] [compiler]`
+    - Example: `meow init my-app python`
+    - If `name` omitted, project is created in current directory.
+    - If `compiler` omitted, defaults to `masm`.
+  * **build** — Build the current project.
+    - Options: `--clean`, `--debug`, `--mode <mode>`
+  * **run** — Run the current project (uses compiler/runner Run implementation).
+  * **test** — Run tests (test runner not yet implemented in all languages).
+  * **install** — Install dependencies from PurrNet as declared in `meow.yaml`.
+  * **add** — Add a dependency: `meow add name@version`.
+  * **update** — Update dependencies from PurrNet.
+  * **lint** — Run linters (language-specific support varies).
+  * **publish** — Publish package to PurrNet.
+  * **help** / `--help` / `-h` — Show help.
+  * `--version` / `-v` — Show Meow version.
+
+===== Examples =====
+  * Scaffold a Java project:
+    `meow init my-java-app java`
+  * Build current project in release mode:
+    `meow build --mode release`
+  * Create project and immediately build:
+    `meow init my-app python && cd my-app && meow build`
+
+===== Notes =====
+  * `meow init` will attempt to generate a language-appropriate main file using the compiler/runner's template provider.
+  * Many commands are intentionally thin wrappers; language-specific behavior lives in compiler/runner implementations.
+
+----

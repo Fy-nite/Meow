@@ -1,0 +1,26 @@
+name: java
+version: 0.1.0
+description: A java java project
+authors:
+- GAMER
+type: java
+main: src/main.java
+build:
+  mode: debug
+  output: build
+  target: default
+  compiler: java
+  incremental: true
+  wildcard: false
+  link: false
+  objdir: build/obj
+  futLanguage: ''
+  futName: ''
+  futDefines: []
+  futIncludes: []
+  futReadOnly: []
+  futExtraArgs: []
+dependencies: {}
+dependencyCategories: {}
+devDependencies: {}
+scripts: {}

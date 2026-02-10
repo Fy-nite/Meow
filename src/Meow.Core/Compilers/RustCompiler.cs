@@ -139,4 +139,24 @@ public class RustCompiler : ICompiler
         Console.WriteLine("Rust debug not implemented; use lldb/gdb/delve externally.");
         return Task.FromResult(false);
     }
+
+    // Template provider: generate a basic Rust main
+    public Task<bool> CreateMainAsync(string projectPath, string mainRelativePath)
+    {
+        try
+        {
+            var fullPath = Path.Combine(projectPath, mainRelativePath);
+            var dir = Path.GetDirectoryName(fullPath) ?? Path.Combine(projectPath, "src");
+            Directory.CreateDirectory(dir);
+            var content = "fn main() {\n    println!(\"Hello, world!\");\n}\n";
+            File.WriteAllText(fullPath, content);
+            Console.WriteLine($"Created Rust main template: {mainRelativePath}");
+            return Task.FromResult(true);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Failed to create Rust main template: {ex.Message}");
+            return Task.FromResult(false);
+        }
+    }
 }
