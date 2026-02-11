@@ -18,6 +18,8 @@ This page explains how `meow init` scaffolds new projects and the meaning of its
 ===== Language templates =====
 After scaffolding `meow init` will attempt to generate a proper language-specific main file by invoking the project's template provider via `BuildService.CreateMainTemplateAsync`. This yields nicer, idiomatic starter files (e.g., `src/main.py`, `src/Main.java`) when compilers/runners implement `ITemplateProvider`.
 
+If a compiler/runner does not implement `ITemplateProvider`, Meow also looks for static starter methods annotated with `StarterTemplate` on the compiler type (see `docs/templates.dokuwiki`). These annotated starters allow providing templates without creating an instance of the compiler type.
+
 ===== Overwrite behavior =====
   * Current behavior: the default `ProjectService` writes a basic main file; the `BuildService` template provider is called afterwards and will write a nicer main file if available. Existing files are not overwritten silently.
   * Future: a `--force` argument may be added to overwrite existing main files.

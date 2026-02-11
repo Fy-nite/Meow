@@ -22,9 +22,10 @@ public class MasmCompiler : ICompiler
                 .Replace(".masm", ".masi");
             var objectFilePath = Path.Combine(objDir, objectFileName);
 
+            var extraArgs = buildConfig?.ExtraArgs != null && buildConfig.ExtraArgs.Count > 0 ? " " + string.Join(" ", buildConfig.ExtraArgs) : string.Empty;
             var process = new Process();
             process.StartInfo.FileName = "masm";
-            process.StartInfo.Arguments = $"\"{fullSourcePath}\" -o \"{objectFilePath}\"";
+            process.StartInfo.Arguments = $"\"{fullSourcePath}\" -o \"{objectFilePath}\"" + extraArgs;
             process.StartInfo.RedirectStandardOutput = true;
             process.StartInfo.RedirectStandardError = true;
             process.StartInfo.UseShellExecute = false;
@@ -50,16 +51,42 @@ public class MasmCompiler : ICompiler
             Console.WriteLine($"Error assembling {sourcePath}: {ex.Message}");
             return null;
         }
+
+    }
+
+    [StarterTemplate("masm")]
+    public static (string MainFile, string Content) GetStarter(string name)
+    {
+        var mainFile = "src/main.masm";
+        var mainContent = $@"; {name} - Main Entry Point
+; This is a starter MASM (MicroAssembly) project created with Meow
+
+; Program entry point
+lbl main
+    ; Your code here
+    hello: db ""Hello from {name}!""
+    push $hello
+    call #print
+    hlt
+
+; Print function
+lbl print
+    pop RAX
+    out 1 $RAX
+    ret
+";
+        return (mainFile, mainContent);
     }
 
     public async Task<bool> LinkAsync(IEnumerable<string> objectFiles, string outputFile, BuildConfig buildConfig)
     {
         try
         {
+            var extraArgs = buildConfig?.ExtraArgs != null && buildConfig.ExtraArgs.Count > 0 ? " " + string.Join(" ", buildConfig.ExtraArgs) : string.Empty;
             var process = new Process();
             process.StartInfo.FileName = "masm";
             var objArgs = string.Join(" ", objectFiles.Select(f => $"\"{f}\""));
-            process.StartInfo.Arguments = $"link {objArgs} -o \"{outputFile}\"";
+            process.StartInfo.Arguments = $"link {objArgs} -o \"{outputFile}\"" + extraArgs;
             process.StartInfo.RedirectStandardOutput = true;
             process.StartInfo.RedirectStandardError = true;
             process.StartInfo.UseShellExecute = false;

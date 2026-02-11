@@ -13,6 +13,7 @@ This page documents the primary Meow CLI commands and options.
     - If `compiler` omitted, defaults to `masm`.
   * **build** — Build the current project.
     - Options: `--clean`, `--debug`, `--mode <mode>`
+    - Note: Additional per-project compiler flags can be specified in `meow.yaml` under `build.extraArgs` (array of strings). These values are appended to the external compiler/linker invocation.
   * **run** — Run the current project (uses compiler/runner Run implementation).
   * **test** — Run tests (test runner not yet implemented in all languages).
   * **install** — Install dependencies from PurrNet as declared in `meow.yaml`.

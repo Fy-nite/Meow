@@ -138,4 +138,10 @@ public class BuildConfig
     /// Extra arbitrary arguments to append to the fut invocation.
     /// </summary>
     public List<string> FutExtraArgs { get; set; } = new();
+
+    /// <summary>
+    /// General extra arguments to append to compiler/linker invocations.
+    /// These will be appended to the external tool command line where applicable.
+    /// </summary>
+    public List<string> ExtraArgs { get; set; } = new();
 }

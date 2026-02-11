@@ -25,7 +25,8 @@ public class GoCompiler : ICompiler
             var outName = Path.GetFileNameWithoutExtension(sourcePath) + (OperatingSystem.IsWindows() ? ".exe" : "");
             var outputPath = Path.Combine(objDir, outName);
 
-            var psi = new ProcessStartInfo("go", $"build -o \"{outputPath}\" \"{absSource}\"")
+            var extraArgs = buildConfig?.ExtraArgs != null && buildConfig.ExtraArgs.Count > 0 ? " " + string.Join(" ", buildConfig.ExtraArgs) : string.Empty;
+            var psi = new ProcessStartInfo("go", $"build -o \"{outputPath}\" \"{absSource}\"" + extraArgs)
             {
                 RedirectStandardOutput = true,
                 RedirectStandardError = true,

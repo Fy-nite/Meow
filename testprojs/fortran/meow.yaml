@@ -2,7 +2,7 @@ name: fortran
 version: 0.1.0
 description: A fortran fortran project
 authors:
-- GAMER
+- charlie
 type: fortran
 main: src/main.f90
 build:
@@ -12,7 +12,7 @@ build:
   compiler: fortran
   incremental: true
   wildcard: false
-  link: true
+  link: false
   objdir: build/obj
   futLanguage: ''
   futName: ''
@@ -20,6 +20,7 @@ build:
   futIncludes: []
   futReadOnly: []
   futExtraArgs: []
+  extraArgs: []
 dependencies: {}
 dependencyCategories: {}
 devDependencies: {}

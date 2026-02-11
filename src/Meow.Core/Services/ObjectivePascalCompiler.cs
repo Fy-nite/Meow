@@ -77,4 +77,16 @@ public class ObjectivePascalCompiler : ICompiler
         var timestamp = DateTime.UtcNow.ToString("o");
         return $"{header}\n// Source: {sourceFile}\n// Assembled: {timestamp}\n\n{sourceContent}\n";
     }
+
+    [StarterTemplate("objectivepascal")]
+    public static (string MainFile, string Content) GetStarter(string name)
+    {
+        var mainFile = "src/main.pas";
+        var mainContent = $@"program {name};
+begin
+  writeln('Hello from {name}!');
+end.
+";
+        return (mainFile, mainContent);
+    }
 }

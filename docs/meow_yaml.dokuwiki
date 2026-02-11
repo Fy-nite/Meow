@@ -25,6 +25,9 @@ build:
   wildcard: true
   link: true
   objdir: "build/obj"
+  extraArgs:
+    - "-Iinclude"
+    - "-DENABLE_LOG"
 
 dependencies:
   example-lib: "^1.0.0"
@@ -54,6 +57,8 @@ scripts: {}
   * **wildcard**: If `true`, Meow will scan `src/` recursively and include all files matching the compiler/runner's `SourceExtensions`.
   * **link**: `true`/`false` whether to link object files into a single output (ignored for runner/interpreted projects).
   * **objdir**: Directory to place intermediate object (or compiled class) outputs.
+
+  * **extraArgs**: Optional list of extra command-line arguments (array of strings) passed to the compiler/runner when Meow invokes external toolchains (e.g., `extraArgs: ["-Iinclude", "-DDEBUG"]`). These are appended to the tool invocation.
 
 Fusion-specific fields (used when `compiler: fusion`):
   * **futLanguage**, **futName**, **futDefines**, **futIncludes**, **futReadOnly**, **futExtraArgs** — passed to the `fut` tool.

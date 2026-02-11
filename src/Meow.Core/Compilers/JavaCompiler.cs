@@ -48,7 +48,8 @@ public class JavaCompiler : ICompiler
             var flags = buildConfig.Mode?.ToLower() == "debug" ? "-g -O0" : "-O2 -s";
             var process = new Process();
             process.StartInfo.FileName = "javac";
-            process.StartInfo.Arguments = $"-d \"{objDir}\" {flags} \"{fullSourcePath}\"";
+            var extraArgs = buildConfig?.ExtraArgs != null && buildConfig.ExtraArgs.Count > 0 ? " " + string.Join(" ", buildConfig.ExtraArgs) : string.Empty;
+            process.StartInfo.Arguments = $"-d \"{objDir}\" {flags} \"{fullSourcePath}\"" + extraArgs;
             process.StartInfo.RedirectStandardOutput = true;
             process.StartInfo.RedirectStandardError = true;
             process.StartInfo.UseShellExecute = false;
@@ -85,7 +86,8 @@ public class JavaCompiler : ICompiler
             var objArgs = string.Join(" ", objectFiles.Select(f => $"\"{f}\""));
             var process = new Process();
             process.StartInfo.FileName = "javac";
-            process.StartInfo.Arguments = $"-d \"{Path.GetDirectoryName(outputFile)}\" {objArgs}";
+            var extraLinkArgs = buildConfig?.ExtraArgs != null && buildConfig.ExtraArgs.Count > 0 ? " " + string.Join(" ", buildConfig.ExtraArgs) : string.Empty;
+            process.StartInfo.Arguments = $"-d \"{Path.GetDirectoryName(outputFile)}\" {objArgs}" + extraLinkArgs;
             process.StartInfo.RedirectStandardOutput = true;
             process.StartInfo.RedirectStandardError = true;
             process.StartInfo.UseShellExecute = false;

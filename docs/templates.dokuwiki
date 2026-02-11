@@ -22,6 +22,25 @@ public interface ITemplateProvider
   * Prefer not to overwrite existing user files silently; consider checking for file existence and returning false unless a `--force` flag is provided (future feature).
   * Log a short message to stdout when template is created.
 
+===== Starter templates via attributes =====
+In addition to `ITemplateProvider`, Meow supports a lightweight attribute-driven template discovery mechanism. Compilers may expose a static method that returns a starter file and its contents and annotate it with `StarterTemplate` so `meow init` can find and use it without requiring an instance of the compiler type.
+
+Example static starter method:
+<code>
+[StarterTemplate("c", "c99")]
+public static (string MainFile, string Content) GetStarter(string projectName)
+{
+  var file = "src/main.c";
+  var content = "#include <stdio.h>\nint main(){ printf(\"Hello\n\"); return 0; }\n";
+  return (file, content);
+}
+</code>
+
+Notes:
+  * The static method should be public and return a tuple `(string MainFile, string Content)`.
+  * Apply `[StarterTemplate(...)]` with one or more names that the starter supports (these typically match values you might pass to `meow init`).
+  * Meow will prefer the compiler/runner's `ITemplateProvider` instance if present; otherwise it will search for annotated static starter methods.
+
 ===== Example (Python) =====
 <code>
 public Task<bool> CreateMainAsync(string projectPath, string mainRelativePath)

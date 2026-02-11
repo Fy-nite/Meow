@@ -25,7 +25,8 @@ public class CSharpCompiler : ICompiler
             var csproj = Directory.GetFiles(projectPath, "*.csproj", SearchOption.TopDirectoryOnly).FirstOrDefault();
             if (!string.IsNullOrEmpty(csproj))
             {
-                var psi = new ProcessStartInfo("dotnet", $"build \"{csproj}\" -c {buildConfig.Mode}")
+                var extraArgs = buildConfig?.ExtraArgs != null && buildConfig.ExtraArgs.Count > 0 ? " " + string.Join(" ", buildConfig.ExtraArgs) : string.Empty;
+                var psi = new ProcessStartInfo("dotnet", $"build \"{csproj}\" -c {buildConfig.Mode}" + extraArgs)
                 {
                     RedirectStandardOutput = true,
                     RedirectStandardError = true,
@@ -59,7 +60,8 @@ public class CSharpCompiler : ICompiler
             var absSource = Path.Combine(projectPath, sourcePath);
             var outName = Path.GetFileNameWithoutExtension(sourcePath) + ".exe";
             var outPath = Path.Combine(objDir, outName);
-            var psi2 = new ProcessStartInfo("csc", $"-out:\"{outPath}\" \"{absSource}\"")
+            var extraArgs2 = buildConfig?.ExtraArgs != null && buildConfig.ExtraArgs.Count > 0 ? " " + string.Join(" ", buildConfig.ExtraArgs) : string.Empty;
+            var psi2 = new ProcessStartInfo("csc", $"-out:\"{outPath}\" \"{absSource}\"" + extraArgs2)
             {
                 RedirectStandardOutput = true,
                 RedirectStandardError = true,

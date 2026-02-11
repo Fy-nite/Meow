@@ -390,26 +390,24 @@ public class BuildService : IBuildService
     /// </summary>
     public ICompiler? CreateCompiler(string compilerName)
     {
+        // Dynamic discovery: scan loaded types implementing ICompiler and match by Name.
+        EnsureCompilerTypesLoaded();
         if (string.IsNullOrWhiteSpace(compilerName))
-            return new MasmCompiler();
+            compilerName = "masm";
 
-            return compilerName.ToLowerInvariant() switch
+        if (_compilerTypes.TryGetValue(compilerName.ToLowerInvariant(), out var ctor))
         {
-            "masm" => new MasmCompiler(),
-            "sharpir" => new SharpIrCompiler(),
-            "uhigh" => new UhighCompiler(),
-            "objectfortran" => new ObjectFortranCompiler(),
-            "c" => new CCompiler(),
-            "cpp" => new CppCompiler(),
-            "fortran" => new FortranCompiler(),
-            "go" => new GoCompiler(),
-            "rust" => new RustCompiler(),
-            "csharp" => new CSharpCompiler(),
-            "objectivepascal" => new ObjectivePascalCompiler(),
-            "fusion" => new FusionCompiler(),
-            // future compilers: "nasm" => new NasmCompiler(),
-            _ => null
-        };
+            try
+            {
+                return ctor() as ICompiler;
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        return null;
     }
 
     /// <summary>
@@ -417,16 +415,74 @@ public class BuildService : IBuildService
     /// </summary>
     public IRunner? CreateRunner(string runnerName)
     {
+        EnsureRunnerTypesLoaded();
         if (string.IsNullOrWhiteSpace(runnerName))
             return null;
 
-        return runnerName.ToLowerInvariant() switch
+        if (_runnerTypes.TryGetValue(runnerName.ToLowerInvariant(), out var ctor))
         {
-            "python" => new Meow.Core.Compilers.PythonRunner(),
-            "node" => new Meow.Core.Compilers.NodeRunner(),
-            // future runners: "node" => new NodeRunner(),
-            _ => null
-        };
+            try
+            {
+                return ctor() as IRunner;
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        return null;
+    }
+
+    // Caches populated via reflection
+    private static readonly Dictionary<string, Func<object?>> _compilerTypes = new();
+    private static readonly Dictionary<string, Func<object?>> _runnerTypes = new();
+
+    private static void EnsureCompilerTypesLoaded()
+    {
+        if (_compilerTypes.Count > 0) return;
+        var asm = typeof(BuildService).Assembly;
+        var compilerInterface = typeof(ICompiler);
+        foreach (var t in asm.GetTypes())
+        {
+            if (!compilerInterface.IsAssignableFrom(t) || t.IsInterface || t.IsAbstract) continue;
+            try
+            {
+                // Attempt to get Name property via a temporary instance if available
+                var inst = Activator.CreateInstance(t) as ICompiler;
+                var name = inst?.Name ?? t.Name.ToLowerInvariant();
+                if (string.IsNullOrWhiteSpace(name)) continue;
+
+                // store a constructor delegate
+                _compilerTypes[name.ToLowerInvariant()] = () => Activator.CreateInstance(t)!;
+            }
+            catch
+            {
+                // ignore types we can't construct
+            }
+        }
+    }
+
+    private static void EnsureRunnerTypesLoaded()
+    {
+        if (_runnerTypes.Count > 0) return;
+        var asm = typeof(BuildService).Assembly;
+        var runnerInterface = typeof(IRunner);
+        foreach (var t in asm.GetTypes())
+        {
+            if (!runnerInterface.IsAssignableFrom(t) || t.IsInterface || t.IsAbstract) continue;
+            try
+            {
+                var inst = Activator.CreateInstance(t) as IRunner;
+                var name = inst?.Name ?? t.Name.ToLowerInvariant();
+                if (string.IsNullOrWhiteSpace(name)) continue;
+                _runnerTypes[name.ToLowerInvariant()] = () => Activator.CreateInstance(t)!;
+            }
+            catch
+            {
+                // ignore
+            }
+        }
     }
 
     /// <summary>

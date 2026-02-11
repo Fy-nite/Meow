@@ -20,13 +20,13 @@ Meow supports two extension points:
 
 ===== How Meow chooses an implementation =====
   * `build.compiler` in `meow.yaml` names either a compiler or a runner.
-  * `BuildService.CreateCompiler` and `CreateRunner` instantiate implementations by name.
+  * `BuildService` will instantiate implementations by name. Meow now discovers available `ICompiler` and `IRunner` implementations automatically by scanning the runtime assemblies for types that implement the interfaces and matching their `Name` property — manual registration is not required.
 
 ===== Adding a new compiler/runner =====
   1. Implement `ICompiler` (compiler) or `IRunner` (runner) in `src/Meow.Core/Compilers`.
-  2. Register the implementation in `BuildService.CreateCompiler` or `CreateRunner`.
+  2. Ensure your type exposes a unique `Name` property (string). Meow will discover your implementation automatically at runtime; no code registration in `BuildService` is necessary.
   3. Add unit tests and documentation in `docs/` describing any required external toolchains.
-  4. Optionally implement `ITemplateProvider` to provide `meow init` templates.
+  4. Optionally implement `ITemplateProvider` or expose a static starter method annotated with `StarterTemplate` (see `docs/templates.dokuwiki`) to provide `meow init` templates.
 
 ===== Dependency categories =====
 Compilers may declare supported dependency categories (e.g., `runtime`, `nuget`, `java`). Use `dependencyCategories` in `meow.yaml` to categorize packages; Meow will warn if a category is unsupported by the chosen compiler.

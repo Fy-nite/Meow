@@ -28,7 +28,8 @@ public class RustCompiler : ICompiler
             var cargoToml = Path.Combine(projectPath, "Cargo.toml");
             if (File.Exists(cargoToml))
             {
-                var psi = new ProcessStartInfo("cargo", "build --release")
+                var extraArgs = buildConfig?.ExtraArgs != null && buildConfig.ExtraArgs.Count > 0 ? " " + string.Join(" ", buildConfig.ExtraArgs) : string.Empty;
+                var psi = new ProcessStartInfo("cargo", "build --release" + extraArgs)
                 {
                     RedirectStandardOutput = true,
                     RedirectStandardError = true,
@@ -56,7 +57,8 @@ public class RustCompiler : ICompiler
             {
                 var outName = Path.GetFileNameWithoutExtension(sourcePath) + (OperatingSystem.IsWindows() ? ".exe" : "");
                 var outPath = Path.Combine(objDir, outName);
-                var psi = new ProcessStartInfo("rustc", $"-o \"{outPath}\" \"{absSource}\"")
+                var extraArgs = buildConfig?.ExtraArgs != null && buildConfig.ExtraArgs.Count > 0 ? " " + string.Join(" ", buildConfig.ExtraArgs) : string.Empty;
+                var psi = new ProcessStartInfo("rustc", $"-o \"{outPath}\" \"{absSource}\"" + extraArgs)
                 {
                     RedirectStandardOutput = true,
                     RedirectStandardError = true,
