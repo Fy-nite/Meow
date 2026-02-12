@@ -28,6 +28,11 @@ build:
   extraArgs:
     - "-Iinclude"
     - "-DENABLE_LOG"
+  # Optional: relative path to a test entrypoint file. If set, `meow test` will use
+  # this path (relative to project root) as the test program entry. If empty,
+  # Meow will probe `tests/test_main<ext>` using the configured compiler's
+  # `SourceExtensions` and fall back to `tests/test_main.c`.
+  testMain: "tests/test_main.c"
 
 dependencies:
   example-lib: "^1.0.0"
@@ -59,6 +64,8 @@ scripts: {}
   * **objdir**: Directory to place intermediate object (or compiled class) outputs.
 
   * **extraArgs**: Optional list of extra command-line arguments (array of strings) passed to the compiler/runner when Meow invokes external toolchains (e.g., `extraArgs: ["-Iinclude", "-DDEBUG"]`). These are appended to the tool invocation.
+
+  * **testMain**: Optional relative path to a test entrypoint file (string). Example: `build.testMain: tests/my_tests.c`. If omitted, `meow test` will attempt to discover a sensible `tests/test_main` file based on the compiler's supported source extensions.
 
 Fusion-specific fields (used when `compiler: fusion`):
   * **futLanguage**, **futName**, **futDefines**, **futIncludes**, **futReadOnly**, **futExtraArgs** — passed to the `fut` tool.

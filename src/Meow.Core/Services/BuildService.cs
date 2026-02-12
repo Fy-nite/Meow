@@ -80,7 +80,7 @@ public class BuildService : IBuildService
     
 
     /// <inheritdoc />
-    public async Task<bool> BuildProjectAsync(string projectPath, bool clean = false, string? testMainRelative = null)
+    public async Task<bool> BuildProjectAsync(string projectPath, bool clean = false, string? testMainRelative = null, bool? forceLink = null)
     {
         try
         {
@@ -92,6 +92,12 @@ public class BuildService : IBuildService
             }
 
             var config = await _configService.LoadConfigAsync(configPath);
+
+            // If caller requested forcing link/unlink for this build, override in-memory only.
+            if (forceLink.HasValue)
+            {
+                config.Build.Link = forceLink.Value;
+            }
 
             // Clean if requested
             if (clean)

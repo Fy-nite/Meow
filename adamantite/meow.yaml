@@ -14,6 +14,8 @@ build:
   wildcard: false
   link: false
   objdir: build/obj
+  # Optional: override test entrypoint used by `meow test`
+  testMain: tests/test_main.fut
   futLanguage: 'cs'
   futName: 'Adamantite'
   futDefines: []

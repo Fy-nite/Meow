@@ -110,6 +110,11 @@ public class BuildConfig
     public string Objdir { get; set; } = "build/obj";
 
     /// <summary>
+    /// Test entrypoint file (relative to project root). If empty, the CLI will attempt to
+    /// discover a tests/test_main.&lt;ext&gt; file based on the compiler's source extensions.
+    /// </summary>
+    public string TestMain { get; set; } = string.Empty;
+    /// <summary>
     /// Fusion-specific target language (passed to fut as `-l`)
     /// </summary>
     public string FutLanguage { get; set; } = string.Empty;

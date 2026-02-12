@@ -338,33 +338,98 @@ For more information, visit: https://github.com/Fy-nite/Meow
             return 2;
         }
 
-        var testMainRel = Path.Combine("tests", "test_main.c");
+        var config = await _configService.LoadConfigAsync(configPath);
+
+        // Determine test entrypoint relative path. Priority:
+        // 1) config.Build.TestMain if configured
+        // 2) discover tests/test_main<ext> using compiler source extensions
+        // 3) fallback to tests/test_main.c
+        string testMainRel;
+        if (!string.IsNullOrWhiteSpace(config.Build.TestMain))
+        {
+            testMainRel = config.Build.TestMain.Replace("\\", "/");
+        }
+        else
+        {
+            var compiler = _buildService.CreateCompiler(config.Build.Compiler);
+            var extensions = compiler?.SourceExtensions ?? new[] { ".c" };
+            string? found = null;
+            foreach (var ext in extensions)
+            {
+                var cand = Path.Combine("tests", $"test_main{ext}");
+                if (File.Exists(Path.Combine(projectPath, cand)))
+                {
+                    found = cand.Replace("\\", "/");
+                    break;
+                }
+            }
+
+            testMainRel = found ?? Path.Combine("tests", "test_main.c");
+        }
+
         var testMainFull = Path.Combine(projectPath, testMainRel);
 
         if (!File.Exists(testMainFull))
         {
             Console.ForegroundColor = ConsoleColor.Yellow;
-            Console.WriteLine($"No test entry point found at {testMainRel}. Create tests/test_main.c to run tests.");
+            Console.WriteLine($"No test entry point found at {testMainRel}. Create {testMainRel} or set 'build.testMain' in meow.yaml to point to your test entry.");
             Console.ResetColor();
             return 1;
         }
 
-        // Build using a test entrypoint; BuildService will include test entry and (if wildcard) exclude normal main
-        Console.WriteLine("Building test program using tests/test_main.c...");
-        var success = await _buildService.BuildProjectAsync(projectPath, clean: false, testMainRel.Replace("\\", "/"));
-        if (success)
+        // Build using the selected test entrypoint; force linking so an executable is produced for test runs
+        Console.WriteLine($"Building test program using {testMainRel}...");
+        var success = await _buildService.BuildProjectAsync(projectPath, clean: false, testMainRel.Replace("\\", "/"), forceLink: true);
+        if (!success)
+        {
+            Console.ForegroundColor = ConsoleColor.Red;
+            Console.WriteLine("✗ Test build failed.");
+            Console.ResetColor();
+            return 3;
+        }
+
+        // Run the test program. For runner-based projects, run the test script directly.
+        var compilerInstance = _buildService.CreateCompiler(config.Build.Compiler);
+        var runnerInstance = compilerInstance == null ? _buildService.CreateRunner(config.Build.Compiler) : null;
+
+        bool runOk = false;
+        if (runnerInstance != null)
+        {
+            Console.WriteLine($"Running tests via runner '{runnerInstance.Name}'...");
+            runOk = await _buildService.RunExecutableAsync(config.Build.Compiler, testMainFull);
+        }
+        else if (compilerInstance != null)
+        {
+            var outputExt = compilerInstance.Name == "masm" ? ".masi" : "";
+            var outputFile = Path.Combine(projectPath, config.Build.Output, $"{config.Name}{outputExt}");
+            if (!File.Exists(outputFile))
+            {
+                Console.ForegroundColor = ConsoleColor.Yellow;
+                Console.WriteLine($"Warning: expected test executable not found: {outputFile}");
+                Console.ResetColor();
+                Console.WriteLine("Attempting to run compiled test entry directly...");
+                runOk = await _buildService.RunExecutableAsync(config.Build.Compiler, testMainFull);
+            }
+            else
+            {
+                Console.WriteLine($"Running test executable: {Path.GetFileName(outputFile)}...");
+                runOk = await _buildService.RunExecutableAsync(config.Build.Compiler, outputFile);
+            }
+        }
+
+        if (runOk)
         {
             Console.ForegroundColor = ConsoleColor.Green;
-            Console.WriteLine("✓ Test build completed successfully!");
+            Console.WriteLine("✓ Tests ran successfully!");
             Console.ResetColor();
             return 0;
         }
         else
         {
             Console.ForegroundColor = ConsoleColor.Red;
-            Console.WriteLine("✗ Test build failed.");
+            Console.WriteLine("✗ Tests failed or runtime error occurred.");
             Console.ResetColor();
-            return 3;
+            return 4;
         }
     }
 
