@@ -34,6 +34,11 @@ build:
   # `SourceExtensions` and fall back to `tests/test_main.c`.
   testMain: "tests/test_main.c"
 
+  # Optional: extra arguments to append to compiler invocations when running `meow test`.
+  # These are merged with `build.extraArgs` for the test build only.
+  testExtraArgs:
+    - "-DTEST_BUILD"
+
 dependencies:
   example-lib: "^1.0.0"
 

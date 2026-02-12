@@ -379,7 +379,7 @@ For more information, visit: https://github.com/Fy-nite/Meow
 
         // Build using the selected test entrypoint; force linking so an executable is produced for test runs
         Console.WriteLine($"Building test program using {testMainRel}...");
-        var success = await _buildService.BuildProjectAsync(projectPath, clean: false, testMainRel.Replace("\\", "/"), forceLink: true);
+        var success = await _buildService.BuildProjectAsync(projectPath, clean: false, testMainRel.Replace("\\", "/"), forceLink: true, extraArgs: config.Build.TestExtraArgs);
         if (!success)
         {
             Console.ForegroundColor = ConsoleColor.Red;

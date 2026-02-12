@@ -80,7 +80,7 @@ public class BuildService : IBuildService
     
 
     /// <inheritdoc />
-    public async Task<bool> BuildProjectAsync(string projectPath, bool clean = false, string? testMainRelative = null, bool? forceLink = null)
+    public async Task<bool> BuildProjectAsync(string projectPath, bool clean = false, string? testMainRelative = null, bool? forceLink = null, IEnumerable<string>? extraArgs = null)
     {
         try
         {
@@ -97,6 +97,19 @@ public class BuildService : IBuildService
             if (forceLink.HasValue)
             {
                 config.Build.Link = forceLink.Value;
+            }
+
+            // If caller provided extra args for this build (e.g., test-specific args), append them in-memory.
+            if (extraArgs != null)
+            {
+                if (config.Build.ExtraArgs == null)
+                    config.Build.ExtraArgs = new List<string>();
+
+                foreach (var a in extraArgs)
+                {
+                    if (!string.IsNullOrWhiteSpace(a))
+                        config.Build.ExtraArgs.Add(a);
+                }
             }
 
             // Clean if requested
@@ -197,6 +210,21 @@ public class BuildService : IBuildService
             var objectFiles = new List<string>();
             foreach (var sourceFile in sourceFiles)
             {
+                // Incremental build: if enabled and an up-to-date object exists, skip assembling
+                string expectedObj = compiler!.GetObjectPath(projectPath, sourceFile, objDir, config.Build);
+                var sourceFull = Path.Combine(projectPath, sourceFile);
+                if (config.Build.Incremental && File.Exists(expectedObj))
+                {
+                    var objTime = File.GetLastWriteTimeUtc(expectedObj);
+                    var srcTime = File.GetLastWriteTimeUtc(sourceFull);
+                    if (objTime >= srcTime)
+                    {
+                        Console.WriteLine($"Skipping unchanged: {sourceFile}");
+                        objectFiles.Add(Path.GetRelativePath(projectPath, expectedObj).Replace("\\", "/"));
+                        continue;
+                    }
+                }
+
                 var objFile = await compiler!.AssembleAsync(projectPath, sourceFile, objDir, config.Build);
                 if (objFile != null)
                 {
@@ -281,9 +309,12 @@ public class BuildService : IBuildService
         if (!string.IsNullOrEmpty(testMainRelative))
         {
             var testFull = Path.Combine(projectPath, testMainRelative);
+            var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             if (File.Exists(testFull))
             {
-                sourceFiles.Add(testMainRelative.Replace("\\", "/"));
+                var norm = testMainRelative.Replace("\\", "/");
+                sourceFiles.Add(norm);
+                seen.Add(norm);
             }
 
             if (config.Build.Wildcard)
@@ -297,9 +328,28 @@ public class BuildService : IBuildService
                     {
                         var rel = Path.GetRelativePath(projectPath, file).Replace("\\", "/");
                         // skip the project's main entrypoint so tests don't compile the main program
-                        if (!string.Equals(rel, config.Main.Replace("\\", "/"), StringComparison.OrdinalIgnoreCase))
+                        if (!string.Equals(rel, config.Main.Replace("\\", "/"), StringComparison.OrdinalIgnoreCase) && seen.Add(rel))
                         {
                             sourceFiles.Add(rel);
+                        }
+                    }
+                }
+
+                // Also include files from tests/ directory matching supported extensions
+                var testsDir = Path.Combine(projectPath, "tests");
+                if (Directory.Exists(testsDir))
+                {
+                    foreach (var ext in extensions)
+                    {
+                        var pattern = "*" + ext;
+                        var testFiles = Directory.GetFiles(testsDir, pattern, SearchOption.AllDirectories);
+                        foreach (var file in testFiles)
+                        {
+                            var rel = Path.GetRelativePath(projectPath, file).Replace("\\", "/");
+                            if (seen.Add(rel))
+                            {
+                                sourceFiles.Add(rel);
+                            }
                         }
                     }
                 }

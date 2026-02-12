@@ -114,6 +114,12 @@ public class BuildConfig
     /// discover a tests/test_main.&lt;ext&gt; file based on the compiler's source extensions.
     /// </summary>
     public string TestMain { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Extra arguments to pass to the compiler when building tests. These are appended
+    /// to `build.extraArgs` for test builds only.
+    /// </summary>
+    public List<string> TestExtraArgs { get; set; } = new();
     /// <summary>
     /// Fusion-specific target language (passed to fut as `-l`)
     /// </summary>

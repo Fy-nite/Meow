@@ -17,6 +17,9 @@ build:
   # Optional: override test entrypoint used by `meow test`
   testMain: tests/test_main.fut
   futLanguage: 'cs'
+  # Extra arguments used only when building tests
+  testExtraArgs:
+    - "-DTEST"
   futName: 'Adamantite'
   futDefines: []
   futIncludes: []

@@ -153,6 +153,7 @@ public class BuildConfig
     public bool Wildcard { get; set; }       // Enable wildcard source selection
     public bool Link { get; set; }           // Enable linking of object files
     public string Objdir { get; set; }       // Object file directory
+    public List<string> TestExtraArgs { get; set; } // Extra args to append for test builds
 }
 ```
 
@@ -171,7 +172,7 @@ var buildService = new BuildService(configService);
 
 **BuildProjectAsync**
 ```csharp
-Task<bool> BuildProjectAsync(string projectPath, bool clean = false)
+Task<bool> BuildProjectAsync(string projectPath, bool clean = false, string? testMainRelative = null, bool? forceLink = null, IEnumerable<string>? extraArgs = null)
 ```
 Builds the MASM project at the specified path.
 

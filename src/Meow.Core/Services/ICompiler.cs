@@ -1,3 +1,6 @@
+using System;
+using System.Collections.Generic;
+using System.IO;
 using System.Threading.Tasks;
 using Meow.Core.Models;
 
@@ -40,4 +43,46 @@ public interface ICompiler
     /// Optional: debug the produced executable (if applicable).
     /// </summary>
     Task<bool> DebugAsync(string executable, string? stdinFile = null);
+
+    /// <summary>
+    /// Return the expected object path for a given source file when assembled by this compiler.
+    /// Implementations may provide language-specific rules; a default heuristic is provided.
+    /// </summary>
+    string GetObjectPath(string projectPath, string sourcePath, string objDir, BuildConfig buildConfig)
+    {
+        try
+        {
+            var rel = sourcePath.Replace("src/", "").Replace("src\\", "").Replace("tests/", "").Replace("tests\\", "");
+            var comp = (Name ?? string.Empty).ToLowerInvariant();
+
+            if (comp == "fusion")
+            {
+                var relativeDir = Path.GetDirectoryName(rel) ?? string.Empty;
+                var ext = string.IsNullOrWhiteSpace(buildConfig.FutLanguage) ? (string.IsNullOrWhiteSpace(buildConfig.Target) || buildConfig.Target == "default" ? "obj" : buildConfig.Target) : buildConfig.FutLanguage;
+                var fileName = Path.GetFileNameWithoutExtension(rel) + "." + ext;
+                var objectDirFull = Path.Combine(objDir, relativeDir);
+                return Path.Combine(objectDirFull, fileName);
+            }
+
+            var flat = rel.Replace(Path.DirectorySeparatorChar, '_').Replace(Path.AltDirectorySeparatorChar, '_');
+
+            if (comp == "masm")
+            {
+                flat = flat.Replace(".masm", ".masi");
+                return Path.Combine(objDir, flat);
+            }
+
+            if (comp == "csharp")
+            {
+                var outName = Path.GetFileNameWithoutExtension(rel) + ".exe";
+                return Path.Combine(objDir, outName);
+            }
+
+            return Path.Combine(objDir, flat + ".o");
+        }
+        catch
+        {
+            return Path.Combine(objDir, Path.GetFileName(sourcePath) + ".o");
+        }
+    }
 }

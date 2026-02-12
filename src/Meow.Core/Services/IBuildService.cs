@@ -13,5 +13,5 @@ public interface IBuildService
     /// <param name="testMainRelative">Optional relative path to a test entrypoint to use instead of the configured main</param>
     /// <param name="forceLink">Optional - if set, override the configured build.link value for this build</param>
     /// <returns>True if build succeeded</returns>
-    Task<bool> BuildProjectAsync(string projectPath, bool clean = false, string? testMainRelative = null, bool? forceLink = null);
+    Task<bool> BuildProjectAsync(string projectPath, bool clean = false, string? testMainRelative = null, bool? forceLink = null, IEnumerable<string>? extraArgs = null);
 }
