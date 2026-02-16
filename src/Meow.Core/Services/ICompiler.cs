@@ -27,7 +27,7 @@ public interface ICompiler
     /// <summary>
     /// Assemble a source file into an object file. Returns the generated object path or null on failure.
     /// </summary>
-    Task<string?> AssembleAsync(string projectPath, string sourcePath, string objDir, BuildConfig buildConfig);
+    Task<string?> AssembleAsync(string projectPath, string sourcePath, string objDir, BuildConfig buildConfig, IProgressReporter? reporter = null);
 
     /// <summary>
     /// Link object files into a final output. Returns true on success.

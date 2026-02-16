@@ -16,7 +16,7 @@ public class SharpIrCompiler : ICompiler
     public IEnumerable<string> SupportedDependencyCategories => new[] { "sharpir", "library", "runtime" };
     public static string ObjectDirectory;
 
-    public async Task<string?> AssembleAsync(string projectPath, string sourcePath, string objDir, BuildConfig buildConfig)
+    public async Task<string?> AssembleAsync(string projectPath, string sourcePath, string objDir, BuildConfig buildConfig, IProgressReporter? reporter = null)
     {
         try
         {

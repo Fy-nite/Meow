@@ -14,7 +14,7 @@ public class FortranCompiler : ICompiler
     public IEnumerable<string> SourceExtensions => new[] { ".f90", ".f95", ".f", ".for" };
     public IEnumerable<string> SupportedDependencyCategories => new[] { "fortran", "runtime" };
 
-    public async Task<string?> AssembleAsync(string projectPath, string sourcePath, string objDir, BuildConfig buildConfig)
+    public async Task<string?> AssembleAsync(string projectPath, string sourcePath, string objDir, BuildConfig buildConfig, IProgressReporter? reporter = null)
     {
         try
         {

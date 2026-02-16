@@ -155,4 +155,8 @@ public class BuildConfig
     /// These will be appended to the external tool command line where applicable.
     /// </summary>
     public List<string> ExtraArgs { get; set; } = new();
+    /// <summary>
+    /// Number of parallel jobs to use when compiling source files. Use 1 for sequential builds.
+    /// </summary>
+    public int Jobs { get; set; } = 1;
 }

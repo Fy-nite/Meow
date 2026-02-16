@@ -14,10 +14,12 @@ public class CCompiler : ICompiler
     public IEnumerable<string> SourceExtensions => new[] { ".c" };
     public IEnumerable<string> SupportedDependencyCategories => new[] { "c", "runtime" };
 
-    public async Task<string?> AssembleAsync(string projectPath, string sourcePath, string objDir, BuildConfig buildConfig)
+    public async Task<string?> AssembleAsync(string projectPath, string sourcePath, string objDir, BuildConfig buildConfig, IProgressReporter? reporter = null)
     {
         try
         {
+            reporter?.StartFile(sourcePath);
+            var sw = System.Diagnostics.Stopwatch.StartNew();
             var fullSourcePath = Path.Combine(projectPath, sourcePath);
             var relativePath = sourcePath;
             // Support sources coming from either src/ or tests/ when building test programs
@@ -59,6 +61,8 @@ public class CCompiler : ICompiler
             {
                 Console.WriteLine(error);
             }
+            sw.Stop();
+            reporter?.EndFile(sourcePath, sw.Elapsed);
             return objectFilePath;
         }
         catch (Exception ex)

@@ -14,7 +14,7 @@ public class FusionCompiler : ICompiler
     public IEnumerable<string> SourceExtensions => new[] { ".fut", ".fusion" };
     public IEnumerable<string> SupportedDependencyCategories => new[] { "fusion", "library", "runtime" };
 
-    public async Task<string?> AssembleAsync(string projectPath, string sourcePath, string objDir, BuildConfig buildConfig)
+    public async Task<string?> AssembleAsync(string projectPath, string sourcePath, string objDir, BuildConfig buildConfig, IProgressReporter? reporter = null)
     {
         try
         {

@@ -31,7 +31,7 @@ public class JavaCompiler : ICompiler
     /// Compile a Java source file into class files placed under the obj directory.
     /// Returns a representative object path on success, or null on failure.
     /// </summary>
-    public async Task<string?> AssembleAsync(string projectPath, string sourcePath, string objDir, BuildConfig buildConfig)
+    public async Task<string?> AssembleAsync(string projectPath, string sourcePath, string objDir, BuildConfig buildConfig, IProgressReporter? reporter = null)
     {
         try
         {

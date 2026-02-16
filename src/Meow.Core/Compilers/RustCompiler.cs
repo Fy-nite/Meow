@@ -17,7 +17,7 @@ public class RustCompiler : ICompiler
 
     public IEnumerable<string> SupportedDependencyCategories => new[] { "runtime" };
 
-    public async Task<string?> AssembleAsync(string projectPath, string sourcePath, string objDir, BuildConfig buildConfig)
+    public async Task<string?> AssembleAsync(string projectPath, string sourcePath, string objDir, BuildConfig buildConfig, IProgressReporter? reporter = null)
     {
         try
         {
@@ -29,7 +29,8 @@ public class RustCompiler : ICompiler
             if (File.Exists(cargoToml))
             {
                 var extraArgs = buildConfig?.ExtraArgs != null && buildConfig.ExtraArgs.Count > 0 ? " " + string.Join(" ", buildConfig.ExtraArgs) : string.Empty;
-                var psi = new ProcessStartInfo("cargo", "build --release" + extraArgs)
+                var jobsArg = buildConfig != null && buildConfig.Jobs > 1 ? $" -j {buildConfig.Jobs}" : string.Empty;
+                var psi = new ProcessStartInfo("cargo", "build --release" + jobsArg + extraArgs)
                 {
                     RedirectStandardOutput = true,
                     RedirectStandardError = true,

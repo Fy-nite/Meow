@@ -17,10 +17,12 @@ public class CSharpCompiler : ICompiler
 
     public IEnumerable<string> SupportedDependencyCategories => new[] { "runtime", "nuget" };
 
-    public async Task<string?> AssembleAsync(string projectPath, string sourcePath, string objDir, BuildConfig buildConfig)
+    public async Task<string?> AssembleAsync(string projectPath, string sourcePath, string objDir, BuildConfig buildConfig, IProgressReporter? reporter = null)
     {
         try
         {
+            reporter?.StartFile(sourcePath);
+            var sw = System.Diagnostics.Stopwatch.StartNew();
             // If project contains a .csproj, prefer dotnet build
             var csproj = Directory.GetFiles(projectPath, "*.csproj", SearchOption.TopDirectoryOnly).FirstOrDefault();
             if (!string.IsNullOrEmpty(csproj))
@@ -79,6 +81,8 @@ public class CSharpCompiler : ICompiler
                 Console.WriteLine($"csc error: {errS}");
                 return null;
             }
+            sw.Stop();
+            reporter?.EndFile(sourcePath, sw.Elapsed);
             return Path.GetRelativePath(projectPath, outPath);
         }
         catch (Exception ex)

@@ -39,7 +39,7 @@ public class CommandHandler
             "--help" or "-h" or "help" => ShowHelp(),
             "init" => await HandleInitAsync(args[1..]),
             "build" => await HandleBuildAsync(args[1..]),
-            "run" => HandleRun(),
+            "run" => await HandleRunAsync(),
             "test" => await HandleTestAsync(),
             "install" => await HandleInstallAsync(),
             "add" => await HandleAddAsync(args[1..]),
@@ -84,6 +84,7 @@ COMMANDS:
     publish     Publish package to PurrNet
     help        Show this help message
     --version   Show version information
+        build -j [NUM]      Build using [NUM] parallel jobs (overrides meow.yaml)
 
 PROJECT SETUP:
     meow init [name]        Create a new project (defaults to MASM but can be changed in meow.yaml)
@@ -94,6 +95,7 @@ EXAMPLES:
     meow init my-project    Create a new project called 'my-project'
     meow init               Create a project in the current directory
     meow build              Build the current project
+        meow build -j 4         Build using 4 parallel jobs (overrides meow.yaml)
     meow build --debug      Build and debug the current project (if available)
     meow run                Run the current project
 
@@ -224,8 +226,19 @@ For more information, visit: https://github.com/Fy-nite/Meow
     bool debug = false;
     string? mode = null;
 
+        int? jobs = null;
+
         for (int i = 0; i < args.Length; i++)
         {
+            var raw = args[i];
+            // Support -j4 compact form
+            if (raw.StartsWith("-j") && raw.Length > 2)
+            {
+                if (int.TryParse(raw.Substring(2), out var jval))
+                    jobs = jval;
+                continue;
+            }
+
             switch (args[i].ToLowerInvariant())
             {
                 case "--clean":
@@ -239,6 +252,21 @@ For more information, visit: https://github.com/Fy-nite/Meow
                     {
                         mode = args[i + 1];
                         i++;
+                    }
+                    break;
+                case "-j":
+                case "--jobs":
+                    if (i + 1 < args.Length && int.TryParse(args[i + 1], out var j))
+                    {
+                        jobs = j;
+                        i++;
+                    }
+                    else
+                    {
+                        Console.ForegroundColor = ConsoleColor.Red;
+                        Console.WriteLine("Error: missing or invalid value for -j/--jobs");
+                        Console.ResetColor();
+                        return 1;
                     }
                     break;
             }
@@ -262,6 +290,14 @@ For more information, visit: https://github.com/Fy-nite/Meow
             var config = await _configService.LoadConfigAsync(configPath);
             config.Build.Mode = mode;
             await _configService.SaveConfigAsync(config, configPath);
+        }
+
+        // Persist jobs override to meow.yaml if supplied
+        if (jobs.HasValue)
+        {
+            var cfg = await _configService.LoadConfigAsync(configPath);
+            cfg.Build.Jobs = jobs.Value;
+            await _configService.SaveConfigAsync(cfg, configPath);
         }
 
         Console.WriteLine("Building project...");
@@ -316,13 +352,185 @@ For more information, visit: https://github.com/Fy-nite/Meow
         }
     }
 
-    private int HandleRun()
+    private async Task<int> HandleRunAsync()
     {
-        Console.ForegroundColor = ConsoleColor.Yellow;
-        Console.WriteLine("Run command is not yet implemented");
-        Console.ResetColor();
-        Console.WriteLine("This will execute projects using the configured compiler's Run functionality");
-        return 1;
+        var projectPath = Directory.GetCurrentDirectory();
+        var configPath = Path.Combine(projectPath, "meow.yaml");
+
+        if (!_configService.ConfigExists(configPath))
+        {
+            Console.ForegroundColor = ConsoleColor.Red;
+            Console.WriteLine("Error: No meow.yaml found in current directory.");
+            Console.ResetColor();
+            Console.WriteLine("Run 'meow init' to create a new project.");
+            return 2;
+        }
+
+        var config = await _configService.LoadConfigAsync(configPath);
+
+        // If a `scripts.run` entry exists in meow.yaml, execute it and return its result.
+        if (config.Scripts != null && config.Scripts.TryGetValue("run", out var scriptCmd) && !string.IsNullOrWhiteSpace(scriptCmd))
+        {
+            Console.WriteLine($"Running configured script: {scriptCmd}");
+            try
+            {
+                string shell, shellArgs;
+                if (OperatingSystem.IsWindows())
+                {
+                    shell = "cmd.exe";
+                    shellArgs = "/C " + scriptCmd;
+                }
+                else
+                {
+                    shell = "/bin/sh";
+                    shellArgs = "-c \"" + scriptCmd.Replace("\"", "\\\"") + "\"";
+                }
+
+                var psi = new System.Diagnostics.ProcessStartInfo(shell, shellArgs)
+                {
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    UseShellExecute = false,
+                    CreateNoWindow = true,
+                    WorkingDirectory = projectPath
+                };
+
+                using var proc = System.Diagnostics.Process.Start(psi);
+                if (proc == null)
+                {
+                    Console.ForegroundColor = ConsoleColor.Red;
+                    Console.WriteLine("Failed to start script process.");
+                    Console.ResetColor();
+                    return 6;
+                }
+
+                var outTask = proc.StandardOutput.ReadToEndAsync();
+                var errTask = proc.StandardError.ReadToEndAsync();
+                await Task.WhenAll(outTask, errTask);
+                proc.WaitForExit();
+                var output = outTask.Result;
+                var error = errTask.Result;
+                if (!string.IsNullOrEmpty(output)) Console.WriteLine(output);
+                if (proc.ExitCode != 0)
+                {
+                    if (!string.IsNullOrEmpty(error)) Console.WriteLine(error);
+                    Console.ForegroundColor = ConsoleColor.Red;
+                    Console.WriteLine($"Script exited with code {proc.ExitCode}");
+                    Console.ResetColor();
+                    return 7;
+                }
+
+                Console.ForegroundColor = ConsoleColor.Green;
+                Console.WriteLine("✓ Script completed successfully!");
+                Console.ResetColor();
+                return 0;
+            }
+            catch (Exception ex)
+            {
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine($"Error executing script: {ex.Message}");
+                Console.ResetColor();
+                return 8;
+            }
+        }
+
+        var compilerInstance = _buildService.CreateCompiler(config.Build.Compiler);
+        var runnerInstance = compilerInstance == null ? _buildService.CreateRunner(config.Build.Compiler) : null;
+
+        bool runOk = false;
+
+        if (runnerInstance != null)
+        {
+            // Runner-based project: find main script and run directly
+            string mainRel = config.Main ?? Path.Combine("src", "main");
+            // If main has no extension, try to find one matching runner extensions
+            var mainFull = Path.Combine(projectPath, mainRel);
+            if (!File.Exists(mainFull))
+            {
+                // try with extensions
+                foreach (var ext in runnerInstance.SourceExtensions)
+                {
+                    var cand = mainFull + ext;
+                    if (File.Exists(cand))
+                    {
+                        mainFull = cand;
+                        break;
+                    }
+                }
+            }
+
+            if (!File.Exists(mainFull))
+            {
+                Console.ForegroundColor = ConsoleColor.Yellow;
+                Console.WriteLine($"No entrypoint found at {mainRel}. Create {mainRel} or set 'main' in meow.yaml to your script path.");
+                Console.ResetColor();
+                return 1;
+            }
+
+            Console.WriteLine($"Running via runner '{runnerInstance.Name}': {Path.GetFileName(mainFull)}");
+            runOk = await _buildService.RunExecutableAsync(config.Build.Compiler, mainFull);
+        }
+        else if (compilerInstance != null)
+        {
+            // Compile then run the produced executable (or run source if passthrough possible)
+            Console.WriteLine("Building project before run...");
+            var built = await _buildService.BuildProjectAsync(projectPath);
+            if (!built)
+            {
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine("✗ Build failed.");
+                Console.ResetColor();
+                return 3;
+            }
+
+            var outputExt = compilerInstance.Name == "masm" ? ".masi" : "";
+            var outputFile = Path.Combine(projectPath, config.Build.Output, $"{config.Name}{outputExt}");
+
+            if (File.Exists(outputFile))
+            {
+                Console.WriteLine($"Running output: {Path.GetFileName(outputFile)}");
+                runOk = await _buildService.RunExecutableAsync(config.Build.Compiler, outputFile);
+            }
+            else
+            {
+                // fallback: try to run main source directly
+                var mainFull = Path.Combine(projectPath, config.Main ?? Path.Combine("src", "main"));
+                if (File.Exists(mainFull))
+                {
+                    Console.WriteLine("Running main source directly...");
+                    runOk = await _buildService.RunExecutableAsync(config.Build.Compiler, mainFull);
+                }
+                else
+                {
+                    Console.ForegroundColor = ConsoleColor.Yellow;
+                    Console.WriteLine($"Executable not found: {outputFile}");
+                    Console.ResetColor();
+                    return 4;
+                }
+            }
+        }
+        else
+        {
+            Console.ForegroundColor = ConsoleColor.Red;
+            Console.WriteLine($"Unknown compiler/runner: {config.Build.Compiler}");
+            Console.ResetColor();
+            return 5;
+        }
+
+        if (runOk)
+        {
+            Console.ForegroundColor = ConsoleColor.Green;
+            Console.WriteLine("✓ Run completed successfully!");
+            Console.ResetColor();
+            return 0;
+        }
+        else
+        {
+            Console.ForegroundColor = ConsoleColor.Red;
+            Console.WriteLine("✗ Run failed or runtime error occurred.");
+            Console.ResetColor();
+            return 6;
+        }
     }
 
     private async Task<int> HandleTestAsync()

@@ -1,6 +1,9 @@
 using Meow.Core.Models;
 using Meow.Core.Compilers;
 using System.Linq;
+using System.Collections.Concurrent;
+using System.Threading;
+using System.Diagnostics;
 
 namespace Meow.Core.Services;
 
@@ -59,6 +62,34 @@ public class BuildService : IBuildService
             var compiler = CreateCompiler(compilerName);
             if (compiler != null)
             {
+                // If the executable file exists on disk, run it directly without redirecting
+                // to avoid buffering and Ctrl+C behavior that can interfere with child process lifetime.
+                try
+                {
+                    if (File.Exists(executable))
+                    {
+                        var ext = Path.GetExtension(executable).ToLowerInvariant();
+                        // Skip passthrough for managed/jvm artifacts which require a host (dotnet/jar)
+                        if (ext != ".dll" && ext != ".jar")
+                        {
+                            var psi = new ProcessStartInfo(executable)
+                            {
+                                UseShellExecute = true,
+                                CreateNoWindow = false,
+                                WorkingDirectory = Path.GetDirectoryName(executable) ?? Environment.CurrentDirectory
+                            };
+                            using var p = Process.Start(psi);
+                            if (p == null) return false;
+                            p.WaitForExit();
+                            return p.ExitCode == 0;
+                        }
+                    }
+                }
+                catch
+                {
+                    // fallback to compiler-specific runner if passthrough fails
+                }
+
                 return await compiler.RunAsync(executable, stdinFile);
             }
 
@@ -208,9 +239,18 @@ public class BuildService : IBuildService
 
             // Assemble each source file to object file using the selected compiler
             var objectFiles = new List<string>();
+
+            // Ensure config.Build is not null
+            if (config.Build == null)
+            {
+                Console.WriteLine("Build configuration is missing in config.");
+                return false;
+            }
+
+            // Determine which sources actually need assembling (respect incremental builds)
+            var toAssemble = new List<(string SourceFile, string ExpectedObj, string SourceFull)>();
             foreach (var sourceFile in sourceFiles)
             {
-                // Incremental build: if enabled and an up-to-date object exists, skip assembling
                 string expectedObj = compiler!.GetObjectPath(projectPath, sourceFile, objDir, config.Build);
                 var sourceFull = Path.Combine(projectPath, sourceFile);
                 if (config.Build.Incremental && File.Exists(expectedObj))
@@ -225,15 +265,82 @@ public class BuildService : IBuildService
                     }
                 }
 
-                var objFile = await compiler!.AssembleAsync(projectPath, sourceFile, objDir, config.Build);
-                if (objFile != null)
+                toAssemble.Add((sourceFile, expectedObj, sourceFull));
+            }
+
+            // Progress reporter
+            var reporter = new ConsoleProgressReporter();
+            int total = toAssemble.Count;
+            int done = 0;
+
+            if (toAssemble.Count > 0)
+            {
+                var jobs = config.Build.Jobs > 0 ? config.Build.Jobs : 1;
+
+                if (jobs <= 1)
                 {
-                    objectFiles.Add(objFile);
+                    // Sequential assemble (legacy behavior)
+                    foreach (var t in toAssemble)
+                    {
+                        double percent = total > 0 ? (done * 100.0 / total) : 100.0;
+                        reporter.Report(t.SourceFile, percent);
+                        var objFile = await compiler!.AssembleAsync(projectPath, t.SourceFile, objDir, config.Build, reporter);
+                        done++;
+                        if (objFile != null)
+                        {
+                            objectFiles.Add(objFile);
+                        }
+                        else
+                        {
+                            Console.WriteLine($"Failed to assemble: {t.SourceFile}");
+                            return false;
+                        }
+                    }
                 }
                 else
                 {
-                    Console.WriteLine($"Failed to assemble: {sourceFile}");
-                    return false;
+                    // Parallel assemble using SemaphoreSlim to limit concurrency
+                    var bag = new ConcurrentBag<string>();
+                    var errors = new ConcurrentBag<string>();
+                    var semaphore = new SemaphoreSlim(jobs);
+                    var tasks = toAssemble.Select(async t =>
+                    {
+                        await semaphore.WaitAsync();
+                        try
+                        {
+                            double percent = total > 0 ? (Interlocked.Increment(ref done) * 100.0 / total) : 100.0;
+                            reporter.Report(t.SourceFile, percent);
+                            var objFile = await compiler!.AssembleAsync(projectPath, t.SourceFile, objDir, config.Build, reporter);
+                            if (objFile == null)
+                            {
+                                errors.Add($"Failed to assemble: {t.SourceFile}");
+                            }
+                            else
+                            {
+                                bag.Add(objFile);
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            errors.Add($"Exception in assembling {t.SourceFile}: {ex.Message}");
+                        }
+                        finally
+                        {
+                            semaphore.Release();
+                        }
+                    }).ToArray();
+
+                    await Task.WhenAll(tasks);
+
+                    // Add assembled object files (order may be different)
+                    foreach (var f in bag)
+                        objectFiles.Add(f);
+                    if (!errors.IsEmpty)
+                    {
+                        foreach (var err in errors)
+                            Console.WriteLine(err);
+                        return false;
+                    }
                 }
             }
 
@@ -244,7 +351,7 @@ public class BuildService : IBuildService
             }
 
             // Link if enabled
-            if (config.Build.Link && objectFiles.Count > 0)
+            if (config.Build != null && config.Build.Link && objectFiles.Count > 0)
             {
                 var outputExt = compiler!.Name == "masm" ? ".masi" : "";
                 var outputFile = Path.Combine(projectPath, config.Build.Output,

@@ -16,7 +16,7 @@ public class GoCompiler : ICompiler
 
     public IEnumerable<string> SupportedDependencyCategories => new[] { "runtime" };
 
-    public async Task<string?> AssembleAsync(string projectPath, string sourcePath, string objDir, BuildConfig buildConfig)
+    public async Task<string?> AssembleAsync(string projectPath, string sourcePath, string objDir, BuildConfig buildConfig, IProgressReporter? reporter = null)
     {
         try
         {
@@ -26,7 +26,8 @@ public class GoCompiler : ICompiler
             var outputPath = Path.Combine(objDir, outName);
 
             var extraArgs = buildConfig?.ExtraArgs != null && buildConfig.ExtraArgs.Count > 0 ? " " + string.Join(" ", buildConfig.ExtraArgs) : string.Empty;
-            var psi = new ProcessStartInfo("go", $"build -o \"{outputPath}\" \"{absSource}\"" + extraArgs)
+            var jobsArg = buildConfig != null && buildConfig.Jobs > 1 ? $" -p {buildConfig.Jobs}" : string.Empty;
+            var psi = new ProcessStartInfo("go", $"build{jobsArg} -o \"{outputPath}\" \"{absSource}\"" + extraArgs)
             {
                 RedirectStandardOutput = true,
                 RedirectStandardError = true,

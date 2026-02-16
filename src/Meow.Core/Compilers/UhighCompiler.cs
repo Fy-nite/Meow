@@ -13,7 +13,7 @@ public class UhighCompiler : ICompiler
     public IEnumerable<string> SourceExtensions => new[] { ".uh" };
     public IEnumerable<string> SupportedDependencyCategories => new[] { "uhigh", "runtime" };
 
-    public async Task<string?> AssembleAsync(string projectPath, string sourcePath, string objDir, BuildConfig buildConfig)
+    public async Task<string?> AssembleAsync(string projectPath, string sourcePath, string objDir, BuildConfig buildConfig, IProgressReporter? reporter = null)
     {
         try
         {

@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Runtime.InteropServices;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
@@ -14,10 +15,12 @@ public class CppCompiler : ICompiler
     public IEnumerable<string> SourceExtensions => new[] { ".cpp", ".cc", ".cxx" };
     public IEnumerable<string> SupportedDependencyCategories => new[] { "cpp", "runtime" };
 
-    public async Task<string?> AssembleAsync(string projectPath, string sourcePath, string objDir, BuildConfig buildConfig)
+    public async Task<string?> AssembleAsync(string projectPath, string sourcePath, string objDir, BuildConfig buildConfig, IProgressReporter? reporter = null)
     {
         try
         {
+            reporter?.StartFile(sourcePath);
+            var sw = System.Diagnostics.Stopwatch.StartNew();
             var fullSourcePath = Path.Combine(projectPath, sourcePath);
             var relativePath = sourcePath;
             // Support sources coming from either src/ or tests/ when building test programs
@@ -38,6 +41,12 @@ public class CppCompiler : ICompiler
             Directory.CreateDirectory(Path.GetDirectoryName(objectFilePath) ?? objDir);
 
             var flags = buildConfig.Mode?.ToLower() == "debug" ? "-g -O0" : "-O2 -s";
+            var target = buildConfig.Target?.ToLowerInvariant() ?? "default";
+            // For shared-library targets, position-independent code is usually required
+            if (target == "shared" || target == "library")
+            {
+                flags += " -fPIC";
+            }
             var process = new Process();
             process.StartInfo.FileName = "g++";
             var extraArgs = buildConfig?.ExtraArgs != null && buildConfig.ExtraArgs.Count > 0 ? " " + string.Join(" ", buildConfig.ExtraArgs) : string.Empty;
@@ -59,6 +68,8 @@ public class CppCompiler : ICompiler
             {
                 Console.WriteLine(error);
             }
+            sw.Stop();
+            reporter?.EndFile(sourcePath, sw.Elapsed);
             return objectFilePath;
         }
         catch (Exception ex)
@@ -75,8 +86,34 @@ public class CppCompiler : ICompiler
             var objArgs = string.Join(" ", objectFiles.Select(f => $"\"{f}\""));
             var process = new Process();
             process.StartInfo.FileName = "g++";
+            var target = buildConfig?.Target?.ToLowerInvariant() ?? "default";
+
+            // Adjust output filename and linker flags for shared libraries
+            var linkFlags = string.Empty;
+            if (target == "shared" || target == "library")
+            {
+                if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+                {
+                    if (!outputFile.EndsWith(".dll", StringComparison.OrdinalIgnoreCase))
+                        outputFile = outputFile + ".dll";
+                    linkFlags = " -shared";
+                }
+                else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+                {
+                    if (!outputFile.EndsWith(".dylib", StringComparison.OrdinalIgnoreCase))
+                        outputFile = outputFile + ".dylib";
+                    linkFlags = " -dynamiclib";
+                }
+                else
+                {
+                    if (!outputFile.EndsWith(".so", StringComparison.OrdinalIgnoreCase))
+                        outputFile = outputFile + ".so";
+                    linkFlags = " -shared";
+                }
+            }
+
             var extraLinkArgs = buildConfig?.ExtraArgs != null && buildConfig.ExtraArgs.Count > 0 ? " " + string.Join(" ", buildConfig.ExtraArgs) : string.Empty;
-            process.StartInfo.Arguments = $"{objArgs} -o \"{outputFile}\"" + extraLinkArgs;
+            process.StartInfo.Arguments = $"{objArgs} -o \"{outputFile}\"{linkFlags}" + extraLinkArgs;
             process.StartInfo.RedirectStandardOutput = true;
             process.StartInfo.RedirectStandardError = true;
             process.StartInfo.UseShellExecute = false;

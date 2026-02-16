@@ -10,7 +10,7 @@ public class MasmCompiler : ICompiler
     public IEnumerable<string> SourceExtensions => new[] { ".masm" };
     public IEnumerable<string> SupportedDependencyCategories => new[] { "assembly", "native", "runtime" };
 
-    public async Task<string?> AssembleAsync(string projectPath, string sourcePath, string objDir, BuildConfig buildConfig)
+    public async Task<string?> AssembleAsync(string projectPath, string sourcePath, string objDir, BuildConfig buildConfig, IProgressReporter? reporter = null)
     {
         try
         {
