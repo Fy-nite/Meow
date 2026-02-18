@@ -78,7 +78,7 @@ public class JavaCompiler : ICompiler
     /// <summary>
     /// For Java this method performs a packaging/copy step into the output directory.
     /// </summary>
-    public async Task<bool> LinkAsync(IEnumerable<string> objectFiles, string outputFile, BuildConfig buildConfig)
+    public async Task<(bool Success, string? Error)> LinkAsync(IEnumerable<string> objectFiles, string outputFile, BuildConfig buildConfig)
     {
         try
         {
@@ -99,19 +99,21 @@ public class JavaCompiler : ICompiler
             Console.WriteLine(output);
             if (process.ExitCode != 0)
             {
-                Console.WriteLine($"Java link error: {error}");
-                return false;
+                var errMsg = $"Java link error: {error}";
+                Console.WriteLine(errMsg);
+                return (false, errMsg);
             }
             if (!string.IsNullOrEmpty(error))
             {
                 Console.WriteLine(error);
             }
-            return true;
+            return (true, null);
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Java link error: {ex.Message}");
-            return false;
+            var exc = $"Java link error: {ex.Message}";
+            Console.WriteLine(exc);
+            return (false, exc);
         }
     }
 

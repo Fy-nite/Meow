@@ -357,12 +357,15 @@ public class BuildService : IBuildService
                 var outputFile = Path.Combine(projectPath, config.Build.Output,
                     $"{config.Name}{outputExt}");
 
-                if (await compiler.LinkAsync(objectFiles, outputFile, config.Build))
+                var (linkOk, linkErr) = await compiler.LinkAsync(objectFiles, outputFile, config.Build);
+                if (linkOk)
                 {
                     Console.WriteLine($"\nLinked output: {Path.GetFileName(outputFile)}");
                 }
                 else
                 {
+                    if (!string.IsNullOrEmpty(linkErr))
+                        Console.WriteLine(linkErr);
                     Console.WriteLine("\nFailed to link object files.");
                     return false;
                 }

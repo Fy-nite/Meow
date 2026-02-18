@@ -78,7 +78,7 @@ lbl print
         return (mainFile, mainContent);
     }
 
-    public async Task<bool> LinkAsync(IEnumerable<string> objectFiles, string outputFile, BuildConfig buildConfig)
+    public async Task<(bool Success, string? Error)> LinkAsync(IEnumerable<string> objectFiles, string outputFile, BuildConfig buildConfig)
     {
         try
         {
@@ -98,8 +98,9 @@ lbl print
             Console.WriteLine(output);
             if (process.ExitCode != 0)
             {
-                Console.WriteLine($"masm link error: {error}");
-                return false;
+                var errMsg = $"masm link error: {error}";
+                Console.WriteLine(errMsg);
+                return (false, errMsg);
             }
             if (error.Length > 0 )
             {
@@ -107,17 +108,19 @@ lbl print
             }
             if (output.Contains("Link failed"))
             {
+                var errMsg = "Linking failed due to errors in object files." + (string.IsNullOrEmpty(error) ? "" : "\n" + error);
                 Console.WriteLine("Linking failed due to errors in object files.");
                 Console.WriteLine(error);
-                return false;
+                return (false, errMsg);
             }
             Console.WriteLine(output);
-            return true;
+            return (true, null);
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error linking: {ex.Message}");
-            return false;
+            var exc = $"Error linking: {ex.Message}";
+            Console.WriteLine(exc);
+            return (false, exc);
         }
     }
 

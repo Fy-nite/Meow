@@ -72,7 +72,7 @@ public class CCompiler : ICompiler
         }
     }
 
-    public async Task<bool> LinkAsync(IEnumerable<string> objectFiles, string outputFile, BuildConfig buildConfig)
+    public async Task<(bool Success, string? Error)> LinkAsync(IEnumerable<string> objectFiles, string outputFile, BuildConfig buildConfig)
     {
         try
         {
@@ -93,19 +93,21 @@ public class CCompiler : ICompiler
             Console.WriteLine(output);
             if (process.ExitCode != 0)
             {
-                Console.WriteLine($"gcc link error: {error}");
-                return false;
+                var errMsg = $"gcc link error: {error}";
+                Console.WriteLine(errMsg);
+                return (false, errMsg);
             }
             if (!string.IsNullOrEmpty(error))
             {
                 Console.WriteLine(error);
             }
-            return true;
+            return (true, null);
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"C link error: {ex.Message}");
-            return false;
+            var exc = $"C link error: {ex.Message}";
+            Console.WriteLine(exc);
+            return (false, exc);
         }
     }
 

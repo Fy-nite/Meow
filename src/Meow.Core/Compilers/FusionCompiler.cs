@@ -129,7 +129,7 @@ public class FusionCompiler : ICompiler
         }
     }
 
-    public async Task<bool> LinkAsync(IEnumerable<string> objectFiles, string outputFile, BuildConfig buildConfig)
+    public async Task<(bool Success, string? Error)> LinkAsync(IEnumerable<string> objectFiles, string outputFile, BuildConfig buildConfig)
     {
         try
         {
@@ -162,9 +162,11 @@ public class FusionCompiler : ICompiler
                 if (!string.IsNullOrEmpty(stdout)) Console.WriteLine(stdout);
                 if (process.ExitCode == 0 && File.Exists(outputFile))
                 {
-                    return true;
+                    return (true, null);
                 }
                 if (!string.IsNullOrEmpty(stderr)) Console.WriteLine($"fut: {stderr}");
+                var futErr = !string.IsNullOrEmpty(stderr) ? $"fut link error: {stderr}" : "fut link failed";
+                // fallthrough to fallback linking
             }
             catch (Exception ex)
             {
@@ -181,12 +183,13 @@ public class FusionCompiler : ICompiler
             }
             Directory.CreateDirectory(Path.GetDirectoryName(outputFile) ?? Path.GetDirectoryName(objectFiles.First()) ?? ".");
             File.WriteAllText(outputFile, sb.ToString());
-            return true;
+            return (true, null);
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Fusion link error: {ex.Message}");
-            return false;
+            var exc = $"Fusion link error: {ex.Message}";
+            Console.WriteLine(exc);
+            return (false, exc);
         }
     }
 

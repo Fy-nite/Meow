@@ -38,7 +38,7 @@ public class UhighCompiler : ICompiler
         }
     }
 
-    public Task<bool> LinkAsync(IEnumerable<string> objectFiles, string outputFile, BuildConfig buildConfig)
+    public Task<(bool Success, string? Error)> LinkAsync(IEnumerable<string> objectFiles, string outputFile, BuildConfig buildConfig)
     {
         try
         {
@@ -51,12 +51,13 @@ public class UhighCompiler : ICompiler
             }
             Directory.CreateDirectory(Path.GetDirectoryName(outputFile) ?? Path.GetDirectoryName(objectFiles.First()) ?? ".");
             File.WriteAllText(outputFile, sb.ToString());
-            return Task.FromResult(true);
+            return Task.FromResult((true, (string?)null));
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Uhigh link error: {ex.Message}");
-            return Task.FromResult(false);
+            var exc = $"Uhigh link error: {ex.Message}";
+            Console.WriteLine(exc);
+            return Task.FromResult((false, exc));
         }
     }
 

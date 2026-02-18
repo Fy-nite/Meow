@@ -56,7 +56,7 @@ public class SharpIrCompiler : ICompiler
         }
     }
 
-    public Task<bool> LinkAsync(IEnumerable<string> objectFiles, string outputFile, BuildConfig buildConfig)
+    public Task<(bool Success, string? Error)> LinkAsync(IEnumerable<string> objectFiles, string outputFile, BuildConfig buildConfig)
     {
         try
         {
@@ -69,12 +69,13 @@ public class SharpIrCompiler : ICompiler
             }
             Directory.CreateDirectory(Path.GetDirectoryName(outputFile) ?? Path.GetDirectoryName(objectFiles.First()) ?? ".");
             File.WriteAllText(outputFile, sb.ToString());
-            return Task.FromResult(true);
+            return Task.FromResult((true, (string?)null));
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"SharpIR link error: {ex.Message}");
-            return Task.FromResult(false);
+            var exc = $"SharpIR link error: {ex.Message}";
+            Console.WriteLine(exc);
+            return Task.FromResult((false, exc));
         }
     }
 

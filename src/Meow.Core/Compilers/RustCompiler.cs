@@ -90,19 +90,20 @@ public class RustCompiler : ICompiler
         }
     }
 
-    public Task<bool> LinkAsync(IEnumerable<string> objectFiles, string outputFile, BuildConfig buildConfig)
+    public Task<(bool Success, string? Error)> LinkAsync(IEnumerable<string> objectFiles, string outputFile, BuildConfig buildConfig)
     {
         try
         {
             var first = objectFiles.FirstOrDefault();
-            if (first == null) return Task.FromResult(false);
+            if (first == null) return Task.FromResult((false, "No object files to link"));
             File.Copy(first, outputFile, true);
-            return Task.FromResult(true);
+            return Task.FromResult((true, (string?)null));
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error linking rust objects: {ex.Message}");
-            return Task.FromResult(false);
+            var exc = $"Error linking rust objects: {ex.Message}";
+            Console.WriteLine(exc);
+            return Task.FromResult((false, exc));
         }
     }
 

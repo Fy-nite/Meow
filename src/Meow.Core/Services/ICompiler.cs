@@ -30,9 +30,9 @@ public interface ICompiler
     Task<string?> AssembleAsync(string projectPath, string sourcePath, string objDir, BuildConfig buildConfig, IProgressReporter? reporter = null);
 
     /// <summary>
-    /// Link object files into a final output. Returns true on success.
+    /// Link object files into a final output. Returns (Success, ErrorMessage).
     /// </summary>
-    Task<bool> LinkAsync(IEnumerable<string> objectFiles, string outputFile, BuildConfig buildConfig);
+    Task<(bool Success, string? Error)> LinkAsync(IEnumerable<string> objectFiles, string outputFile, BuildConfig buildConfig);
 
     /// <summary>
     /// Optional: run the produced executable (if applicable).

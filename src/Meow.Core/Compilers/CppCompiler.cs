@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.IO;
 using System.Linq;
+using System.Text;
 using System.Threading.Tasks;
 using Meow.Core.Models;
 
@@ -55,18 +56,21 @@ public class CppCompiler : ICompiler
             process.StartInfo.RedirectStandardError = true;
             process.StartInfo.UseShellExecute = false;
             process.StartInfo.CreateNoWindow = true;
+            var outputSb = new StringBuilder();
+            var errorSb = new StringBuilder();
+            process.EnableRaisingEvents = true;
+            process.OutputDataReceived += (s, e) => { if (e.Data != null) { outputSb.AppendLine(e.Data); Console.WriteLine(e.Data); } };
+            process.ErrorDataReceived += (s, e) => { if (e.Data != null) { errorSb.AppendLine(e.Data); Console.WriteLine(e.Data); } };
             process.Start();
-            var output = await process.StandardOutput.ReadToEndAsync();
-            var error = await process.StandardError.ReadToEndAsync();
-            process.WaitForExit();
+            process.BeginOutputReadLine();
+            process.BeginErrorReadLine();
+            await process.WaitForExitAsync();
+            var output = outputSb.ToString();
+            var error = errorSb.ToString();
             if (process.ExitCode != 0)
             {
                 Console.WriteLine($"g++ compile error: {error}");
                 return null;
-            }
-            if (!string.IsNullOrEmpty(error))
-            {
-                Console.WriteLine(error);
             }
             sw.Stop();
             reporter?.EndFile(sourcePath, sw.Elapsed);
@@ -78,7 +82,7 @@ public class CppCompiler : ICompiler
             return null;
         }
     }
-    public async Task<bool> LinkAsync(IEnumerable<string> objectFiles, string outputFile, BuildConfig buildConfig)
+    public async Task<(bool Success, string? Error)> LinkAsync(IEnumerable<string> objectFiles, string outputFile, BuildConfig buildConfig)
     {
         try
         {
@@ -118,30 +122,39 @@ public class CppCompiler : ICompiler
             process.StartInfo.RedirectStandardError = true;
             process.StartInfo.UseShellExecute = false;
             process.StartInfo.CreateNoWindow = true;
+            var outputSb = new StringBuilder();
+            var errorSb = new StringBuilder();
+            process.EnableRaisingEvents = true;
+            process.OutputDataReceived += (s, e) => { if (e.Data != null) { outputSb.AppendLine(e.Data); Console.WriteLine(e.Data); } };
+            process.ErrorDataReceived += (s, e) => { if (e.Data != null) { errorSb.AppendLine(e.Data); Console.WriteLine(e.Data); } };
             process.Start();
-            var output = await process.StandardOutput.ReadToEndAsync();
-            var error = await process.StandardError.ReadToEndAsync();
-            process.WaitForExit();
+            process.BeginOutputReadLine();
+            process.BeginErrorReadLine();
+            await process.WaitForExitAsync();
+            var output = outputSb.ToString();
+            var error = errorSb.ToString();
             Console.WriteLine(output);
             if (process.ExitCode != 0)
             {
-                Console.WriteLine($"g++ link error: {error}");
-                return false;
+                var errMsg = $"g++ link error: {error}";
+                Console.WriteLine(errMsg);
+                return (false, errMsg);
             }
             if (!string.IsNullOrEmpty(error))
             {
                 Console.WriteLine(error);
             }
-            return true;
+            return (true, null);
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"C++ link error: {ex.Message}");
-            return false;
+            var exc = $"C++ link error: {ex.Message}";
+            Console.WriteLine(exc);
+            return (false, exc);
         }
     }
 
-    public Task<bool> RunAsync(string executable, string? stdinFile = null)
+    public async Task<bool> RunAsync(string executable, string? stdinFile = null)
     {
         try
         {
@@ -155,28 +168,39 @@ public class CppCompiler : ICompiler
             {
                 process.StartInfo.RedirectStandardInput = true;
             }
+
+            var outputSb = new StringBuilder();
+            var errorSb = new StringBuilder();
+            process.EnableRaisingEvents = true;
+            process.OutputDataReceived += (s, e) => { if (e.Data != null) { outputSb.AppendLine(e.Data); Console.WriteLine(e.Data); } };
+            process.ErrorDataReceived += (s, e) => { if (e.Data != null) { errorSb.AppendLine(e.Data); Console.WriteLine(e.Data); } };
+
             process.Start();
+            process.BeginOutputReadLine();
+            process.BeginErrorReadLine();
+
             if (!string.IsNullOrEmpty(stdinFile))
             {
                 var input = File.ReadAllText(stdinFile);
-                process.StandardInput.Write(input);
+                await process.StandardInput.WriteAsync(input);
                 process.StandardInput.Close();
             }
-            var output = process.StandardOutput.ReadToEnd();
-            var error = process.StandardError.ReadToEnd();
-            process.WaitForExit();
+
+            await process.WaitForExitAsync();
+            var output = outputSb.ToString();
+            var error = errorSb.ToString();
             Console.WriteLine(output);
             if (process.ExitCode != 0)
             {
                 Console.WriteLine($"Run error: {error}");
-                return Task.FromResult(false);
+                return false;
             }
-            return Task.FromResult(true);
+            return true;
         }
         catch (Exception ex)
         {
             Console.WriteLine($"Error running {executable}: {ex.Message}");
-            return Task.FromResult(false);
+            return false;
         }
     }
 
