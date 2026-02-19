@@ -4,6 +4,8 @@ using System.Linq;
 using System.Collections.Concurrent;
 using System.Threading;
 using System.Diagnostics;
+using System.Runtime.InteropServices;
+using System.Text.Json;
 
 namespace Meow.Core.Services;
 
@@ -143,6 +145,9 @@ public class BuildService : IBuildService
                 }
             }
 
+            // Expand platform-specific args and convenience flags (includeDirs, defines, std) into ExtraArgs.
+            ResolvePlatformArgs(config.Build);
+
             // Clean if requested
             if (clean)
             {
@@ -221,6 +226,12 @@ public class BuildService : IBuildService
             foreach (var file in sourceFiles)
             {
                 Console.WriteLine($"  - {file}");
+            }
+
+            // Generate compile_commands.json if requested (clangd / IDE integration).
+            if (config.Build.GenerateCompileCommands && compiler != null)
+            {
+                await GenerateCompileCommandsAsync(projectPath, compiler, sourceFiles, objDir, config.Build);
             }
 
             // If this is a runner-based project, we do not assemble/link; simply validate main/source presence
@@ -687,5 +698,81 @@ public class BuildService : IBuildService
             Console.WriteLine($"Failed to create main template: {ex.Message}");
             return false;
         }
+    }
+
+    /// <summary>
+    /// Expands platform-specific args (<c>winArgs</c>, <c>linuxArgs</c>, <c>macArgs</c>) and
+    /// convenience flags (<c>includeDirs</c>, <c>defines</c>, <c>std</c>) into
+    /// <see cref="BuildConfig.ExtraArgs"/> for the current build invocation.
+    /// This is done in-memory and does not modify the on-disk meow.yaml.
+    /// </summary>
+    private static void ResolvePlatformArgs(BuildConfig build)
+    {
+        build.ExtraArgs ??= new List<string>();
+
+        // Platform-specific args
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+        {
+            if (build.WinArgs?.Count > 0)
+                build.ExtraArgs.AddRange(build.WinArgs);
+        }
+        else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+        {
+            if (build.LinuxArgs?.Count > 0)
+                build.ExtraArgs.AddRange(build.LinuxArgs);
+        }
+        else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+        {
+            if (build.MacArgs?.Count > 0)
+                build.ExtraArgs.AddRange(build.MacArgs);
+        }
+
+        // Include directories → -I"dir" flags
+        if (build.IncludeDirs?.Count > 0)
+            build.ExtraArgs.AddRange(build.IncludeDirs.Select(d => $"-I\"{d}\""));
+
+        // Preprocessor defines → -DNAME flags
+        if (build.Defines?.Count > 0)
+            build.ExtraArgs.AddRange(build.Defines.Select(d => $"-D{d}"));
+
+        // Language standard → --std=VALUE
+        if (!string.IsNullOrWhiteSpace(build.Std))
+            build.ExtraArgs.Add($"--std={build.Std}");
+    }
+
+    /// <summary>
+    /// Generates a <c>compile_commands.json</c> compilation database in the project root.
+    /// Only source files whose compiler returns a non-null compile command are included.
+    /// </summary>
+    private async Task GenerateCompileCommandsAsync(
+        string projectPath,
+        ICompiler compiler,
+        List<string> sourceFiles,
+        string objDir,
+        BuildConfig buildConfig)
+    {
+        var entries = new List<CompileCommandEntry>();
+        var absProjectPath = Path.GetFullPath(projectPath).Replace('\\', '/');
+
+        foreach (var sourceFile in sourceFiles)
+        {
+            var command = compiler.GetCompileCommand(projectPath, sourceFile, objDir, buildConfig);
+            if (command == null) continue;
+
+            var absSourcePath = Path.GetFullPath(Path.Combine(projectPath, sourceFile)).Replace('\\', '/');
+            entries.Add(new CompileCommandEntry
+            {
+                Directory = absProjectPath,
+                Command = command,
+                File = absSourcePath
+            });
+        }
+
+        if (entries.Count == 0) return;
+
+        var json = JsonSerializer.Serialize(entries, new JsonSerializerOptions { WriteIndented = true });
+        var outputPath = Path.Combine(projectPath, "compile_commands.json");
+        await File.WriteAllTextAsync(outputPath, json);
+        Console.WriteLine($"Generated compile_commands.json with {entries.Count} entr{(entries.Count == 1 ? "y" : "ies")}.");
     }
 }

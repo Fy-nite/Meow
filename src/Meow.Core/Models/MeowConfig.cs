@@ -155,8 +155,52 @@ public class BuildConfig
     /// These will be appended to the external tool command line where applicable.
     /// </summary>
     public List<string> ExtraArgs { get; set; } = new();
+
     /// <summary>
     /// Number of parallel jobs to use when compiling source files. Use 1 for sequential builds.
     /// </summary>
     public int Jobs { get; set; } = 1;
+
+    // --- Platform-specific args ---
+
+    /// <summary>
+    /// Extra compiler/linker arguments appended only when building on Windows.
+    /// </summary>
+    public List<string> WinArgs { get; set; } = new();
+
+    /// <summary>
+    /// Extra compiler/linker arguments appended only when building on Linux.
+    /// </summary>
+    public List<string> LinuxArgs { get; set; } = new();
+
+    /// <summary>
+    /// Extra compiler/linker arguments appended only when building on macOS.
+    /// </summary>
+    public List<string> MacArgs { get; set; } = new();
+
+    // --- C/C++ convenience flags ---
+
+    /// <summary>
+    /// Directories to add as -I include search paths (C/C++ compilers).
+    /// </summary>
+    public List<string> IncludeDirs { get; set; } = new();
+
+    /// <summary>
+    /// Preprocessor macro definitions to pass as -D flags (C/C++ compilers).
+    /// </summary>
+    public List<string> Defines { get; set; } = new();
+
+    /// <summary>
+    /// Language standard to pass to the compiler (e.g., "c++17", "c11", "c++20").
+    /// Translates to --std=VALUE.
+    /// </summary>
+    public string Std { get; set; } = string.Empty;
+
+    // --- IDE integration ---
+
+    /// <summary>
+    /// When true, generates a compile_commands.json compilation database in the project root
+    /// after each build. Useful for IDE/clangd/IntelliSense integration.
+    /// </summary>
+    public bool GenerateCompileCommands { get; set; } = false;
 }

@@ -45,6 +45,13 @@ public interface ICompiler
     Task<bool> DebugAsync(string executable, string? stdinFile = null);
 
     /// <summary>
+    /// Return the compile command string that would be used to compile a given source file.
+    /// Used to generate compile_commands.json for IDE / clangd integration.
+    /// Returns null if the compiler does not support this.
+    /// </summary>
+    string? GetCompileCommand(string projectPath, string sourcePath, string objDir, BuildConfig buildConfig) => null;
+
+    /// <summary>
     /// Return the expected object path for a given source file when assembled by this compiler.
     /// Implementations may provide language-specific rules; a default heuristic is provided.
     /// </summary>

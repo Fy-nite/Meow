@@ -230,6 +230,29 @@ public class CppCompiler : ICompiler
         return $"// {header}\n// Source: {sourceFile}\n// Assembled: {timestamp}\n\n{sourceContent}\n";
     }
 
+    public string? GetCompileCommand(string projectPath, string sourcePath, string objDir, BuildConfig buildConfig)
+    {
+        var fullSourcePath = Path.GetFullPath(Path.Combine(projectPath, sourcePath)).Replace('\\', '/');
+        var rel = sourcePath;
+        if (rel.StartsWith("src/", StringComparison.OrdinalIgnoreCase) || rel.StartsWith("src\\", StringComparison.OrdinalIgnoreCase))
+            rel = rel.Substring(4);
+        else if (rel.StartsWith("tests/", StringComparison.OrdinalIgnoreCase) || rel.StartsWith("tests\\", StringComparison.OrdinalIgnoreCase))
+            rel = rel.Substring(6);
+        var objFileName = rel
+            .Replace(Path.DirectorySeparatorChar, '_')
+            .Replace(Path.AltDirectorySeparatorChar, '_')
+            + ".o";
+        var objectFilePath = Path.GetFullPath(Path.Combine(objDir, objFileName)).Replace('\\', '/');
+        var flags = buildConfig.Mode?.ToLower() == "debug" ? "-g -O0" : "-O2 -s";
+        var target = buildConfig.Target?.ToLowerInvariant() ?? "default";
+        if (target == "shared" || target == "library")
+            flags += " -fPIC";
+        var extraArgs = buildConfig?.ExtraArgs != null && buildConfig.ExtraArgs.Count > 0
+            ? " " + string.Join(" ", buildConfig.ExtraArgs)
+            : string.Empty;
+        return $"g++ -c {flags} \"{fullSourcePath}\" -o \"{objectFilePath}\"" + extraArgs;
+    }
+
     [StarterTemplate("cpp")]
     public static (string MainFile, string Content) GetStarter(string name)
     {

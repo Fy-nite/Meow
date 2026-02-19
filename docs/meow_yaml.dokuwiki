@@ -13,14 +13,14 @@ description: "An example project"
 authors:
   - "Your Name"
 
-type: "java"
-main: "src/main.java"
+type: "cpp"
+main: "src/main.cpp"
 
 build:
   mode: "debug"
   output: "build"
   target: "default"
-  compiler: "java"
+  compiler: "cpp"
   incremental: true
   wildcard: true
   link: true
@@ -28,11 +28,36 @@ build:
   extraArgs:
     - "-Iinclude"
     - "-DENABLE_LOG"
+
+  # Language standard (C/C++ compilers)
+  std: "c++17"
+
+  # Include search paths → expands to -I"dir" flags
+  includeDirs:
+    - include/
+    - vendor/mylib/include
+
+  # Preprocessor defines → expands to -DNAME flags
+  defines:
+    - RELEASE_BUILD
+    - MY_VERSION=2
+
+  # Platform-specific extra args (merged into extraArgs at build time)
+  winArgs:
+    - -D_WIN32_WINNT=0x0601
+  linuxArgs:
+    - -lpthread
+  macArgs:
+    - -framework CoreFoundation
+
+  # Generate compile_commands.json for IDE / clangd integration
+  generateCompileCommands: true
+
   # Optional: relative path to a test entrypoint file. If set, `meow test` will use
   # this path (relative to project root) as the test program entry. If empty,
   # Meow will probe `tests/test_main<ext>` using the configured compiler's
   # `SourceExtensions` and fall back to `tests/test_main.c`.
-  testMain: "tests/test_main.c"
+  testMain: "tests/test_main.cpp"
 
   # Optional: extra arguments to append to compiler invocations when running `meow test`.
   # These are merged with `build.extraArgs` for the test build only.
@@ -71,6 +96,27 @@ scripts: {}
   * **extraArgs**: Optional list of extra command-line arguments (array of strings) passed to the compiler/runner when Meow invokes external toolchains (e.g., `extraArgs: ["-Iinclude", "-DDEBUG"]`). These are appended to the tool invocation.
 
   * **testMain**: Optional relative path to a test entrypoint file (string). Example: `build.testMain: tests/my_tests.c`. If omitted, `meow test` will attempt to discover a sensible `tests/test_main` file based on the compiler's supported source extensions.
+
+  * **testExtraArgs**: Optional list of extra arguments appended to compiler invocations when running `meow test`. These are merged with `build.extraArgs` for the test build only.
+
+====== C/C++ convenience flags ======
+The following fields are sugar for commonly-needed compiler flags. They are resolved into **extraArgs** in-memory at build time; the on-disk `meow.yaml` is never modified.
+
+  * **std**: Language standard string passed as `--std=VALUE` (e.g., `"c++17"`, `"c11"`, `"c++20"`).
+  * **includeDirs**: List of include-search-path directories. Each entry expands to `"-I\"dir\""`.
+  * **defines**: List of preprocessor macro definitions. Each entry expands to `"-DNAME"` (e.g., `DEBUG`, `MY_VERSION=2`).
+
+====== Platform-specific arguments ======
+Extra compiler/linker arguments that are only appended when building on a specific OS. Like the convenience flags above, these are resolved in-memory and never written back to disk.
+
+  * **winArgs**: Arguments added only on **Windows**.
+  * **linuxArgs**: Arguments added only on **Linux**.
+  * **macArgs**: Arguments added only on **macOS**.
+
+All three fields accept an array of strings, identical in format to `extraArgs`.
+
+====== IDE / tooling integration ======
+  * **generateCompileCommands**: When `true`, Meow writes a `compile_commands.json` [[https://clang.llvm.org/docs/JSONCompilationDatabase.html|compilation database]] to the project root after each build. Supported for `c` and `cpp` compilers. This file is consumed by clangd, clang-tidy, IDEs (VS Code C/C++ extension, CLion, etc.) to provide accurate IntelliSense and diagnostics.
 
 Fusion-specific fields (used when `compiler: fusion`):
   * **futLanguage**, **futName**, **futDefines**, **futIncludes**, **futReadOnly**, **futExtraArgs** — passed to the `fut` tool.
