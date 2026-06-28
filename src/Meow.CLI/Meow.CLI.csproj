@@ -33,12 +33,7 @@
 
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
 
-      <PublishSingleFile>true</PublishSingleFile>
-      <SelfContained>true</SelfContained>
-      <RuntimeIdentifiers>win-x64;osx-x64;osx-arm64;linux-x64;linux-arm64</RuntimeIdentifiers>
-      <PublishTrimmed>false</PublishTrimmed>
-      <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
-      <IncludeAllContentForSelfExtract>true</IncludeAllContentForSelfExtract>
+
 
   </PropertyGroup>
 
